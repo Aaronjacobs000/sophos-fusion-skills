@@ -28,7 +28,7 @@ Platform actions read some inputs they do not declare. Most Sophos platform acti
 
 ## Connections
 
-A connection holds the credentials and settings for one connector. An instance binds the connections its template needs (`connections: [id, ...]`). Platform connectors (Taegis.Case, Taegis.Alert, Taegis.SophosFirewall and so on) usually have one connection already, created by the platform. Third-party connectors need a connection made with the vendor's credentials.
+A connection holds the credentials and settings for one connector. An instance binds the connections its template needs (`connections: [id, ...]`). Platform connectors (Taegis.Case, Taegis.Alert, Taegis.SophosFirewall, and so on) usually have one connection already, created by the platform. Third-party connectors need a connection made with the vendor's credentials.
 
 The deployment script binds the only connection of each connector automatically and asks when there are several.
 

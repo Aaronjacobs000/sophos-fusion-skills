@@ -1,6 +1,6 @@
 ---
 name: playbooks
-description: Entry point for Sophos Fusion automation. Use it when someone wants to build, check, deploy, run, or fix a Sophos Fusion playbook or custom connector (SOAR automation, playbook templates, configured playbooks, connections, CEL filters, triggers on cases, detections, health or identity events). It decides which phase comes next, runs the phases in order, stops when a check fails, and carries names and IDs from one phase to the next. It calls no API itself.
+description: Entry point for Sophos Fusion automation. Use it when someone wants to build, check, deploy, run, or fix a Sophos Fusion playbook or custom connector (SOAR automation, playbook templates, configured playbooks, connections, CEL filters, triggers on cases, detections, health, or identity events). It decides which phase comes next, runs the phases in order, stops when a check fails, and carries names and IDs from one phase to the next. It calls no API itself.
 license: MIT
 ---
 

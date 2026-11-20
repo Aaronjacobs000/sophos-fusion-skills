@@ -78,7 +78,7 @@ mkdir -p ~/.agents/skills
 for s in "$PWD"/sophos-fusion-skills/skills/*; do ln -s "$s" ~/.agents/skills/; done
 ```
 
-The scripts find their shared code through the links, so they run from there too. The skill names (`playbooks`, `setup`, `authoring` and so on) are generic, so check for clashes with other skills in that folder.
+The scripts find their shared code through the links, so they run from there too. The skill names (`playbooks`, `setup`, `authoring`, and so on) are generic, so check for clashes with other skills in that folder.
 
 While the repository is private, your git client needs GitHub access. Run `gh auth login` and then `gh auth setup-git`. Claude Code tries SSH first; if you have no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
 
@@ -157,7 +157,7 @@ The safety rules live in the scripts, so they hold whichever assistant runs them
 
 - Reads by default. Lookups, validation, CEL cases, lists, exports, logs, and diagnosis never change anything.
 - Every write needs `--yes`. That covers imports, connections, instances, filters, schedules, enable, publish, delete, rollback, runs, and connector tests. Without the flag, the script sends nothing and exits with code 3. The skills tell the agent to describe each write and get your approval for that one write first.
-- Production needs `--production` too. On a production profile, the agent names the tenant before it asks. A `--tenant` other than the profile's saved tenant counts as production.
+- Production needs `--production` too. On a production profile, the agent names the tenant before it asks. A `--tenant` or `SOPHOS_FUSION_TENANT_ID` other than the profile's saved tenant counts as production.
 - Test copies. Imports become `ZZTest_<name>` with a `ZZ Test` title unless you ask for a real deployment.
 - Disabled instances. New instances start disabled, and new schedules start paused. Enabling is a separate step that needs its own approval.
 - A ledger and rollback. Every created object is recorded the moment Fusion returns its ID. `ledger.mjs rollback` deletes a run's objects newest first, children before parents, and reads each delete back. It only touches objects in the ledger. Objects that were already on the tenant are never recorded, and changing one needs `--allow-existing`.

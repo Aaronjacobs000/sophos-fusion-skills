@@ -96,7 +96,7 @@ Fusion warns "unexpected task dsl statement" on any other key and ignores it.
 
 ## What a task can read
 
-- `inputs`: the instance configuration, the run parameters, and the trigger event (`inputs.case`, `inputs.event` and so on).
+- `inputs`: the instance configuration, the run parameters, and the trigger event (`inputs.case`, `inputs.event`, and so on).
 - `TDR`: platform values (`TDR.tenant`, `TDR.URL`, `TDR.API`, `TDR.user`).
 - `tenant`: the tenant record.
 - Earlier tasks, by name: `task.outputs.x`, `task.variables.x`, `task.status`.

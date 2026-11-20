@@ -58,7 +58,7 @@ Read [template-dsl.md](references/template-dsl.md) for the structure and [cel.md
 - **Every string is CEL.** `title: inputs.x` reads a value. For literal text use YAML single quotes (`'Closed'`) or a CEL string inside double quotes (`"'Closed'"`). A string holding `${...}` is a template.
 - **Guard every read of a task that can be skipped or fail.** A task with a `condition` or `optional: true` may leave no results. Read it as `step.?outputs.x.orValue(default)` or behind `has(step, 'outputs.x')`. Fusion's validator only warns; the run then fails with "no such key".
 - **Tasks inside a loop or branch are invisible outside it.** Copy values out through the block task's `variables`.
-- **Task names:** lower case, digits, underscores, unique. Not a CEL word (`loop`, `if`, `int`, `string`, `map` and others break every expression).
+- **Task names:** lower case, digits, underscores, unique. Not a CEL word (`loop`, `if`, `int`, `string`, `map`, and others break every expression).
 - **Put `nolog: true` on any step whose request or response carries a password, token, key, or signed or webhook URL.** Fusion keeps execution logs, bodies included, permanently.
 - **Response tier:** an input `dry_run` (boolean, default true), an integer input starting `max_` that caps one run, and every changing action gated with `!...dry_run` in its condition. Report what a dry run would have done in `outcomeMessage`.
 - **Always set `outcomeStatus` and `outcomeMessage`.** Without them a run that failed quietly shows as Completed, outcome UNKNOWN.

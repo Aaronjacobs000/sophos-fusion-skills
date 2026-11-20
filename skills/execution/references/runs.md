@@ -7,7 +7,7 @@
 | Scheduled, Started | still going |
 | Completed | finished. Check the outcome: Completed does not mean every step worked |
 | Failed | a non-optional step failed, or an output or outcome expression failed |
-| Canceled | cancelled |
+| Canceled | canceled |
 | TimedOut | ran too long |
 | Dropped | the platform dropped it |
 | PendingApproval | waiting for someone to approve it in the console |
