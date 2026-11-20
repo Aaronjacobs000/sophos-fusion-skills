@@ -1,0 +1,17 @@
+{
+  "name": "sophos-fusion-skills",
+  "version": "0.1.0",
+  "description": "Agent skills for authoring, validating, deploying, and running Sophos Fusion playbooks and custom connectors.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "author": "Aaron Jacobs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "validate:examples": "node skills/validation/scripts/validate.mjs all examples",
+    "check:manifests": "node tools/check-manifests.mjs"
+  }
+}

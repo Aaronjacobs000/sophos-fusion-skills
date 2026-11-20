@@ -1,0 +1,54 @@
+apiVersion: v0.0.1
+kind: Connector
+name: Fixture_BadConnector
+version: 1.0.0
+title: Bad connector
+description: Breaks the connector rules.
+documentation: |
+    # Hosts
+    - api.declared.example
+method: http
+authTypes:
+    - None
+    - Magic
+parameters:
+    type: object
+    properties:
+        base:
+            type: string
+actions:
+    - name: plain_http
+      config:
+        method: GET
+        url: http://api.declared.example/x
+        outputs:
+            ok: "${true}"
+    - name: undeclared_host
+      description: Calls a host the documentation does not list
+      config:
+        method: GET
+        url: https://api.undeclared.example/x
+        outputs:
+            ok: "${status.code == 200}"
+    - name: missing_param
+      description: Reads a parameter that does not exist
+      config:
+        method: POST
+        url: ${config.nothere}/x
+        outputs:
+            ok: "${status.code == 200"
+    - name: fixed_key
+      description: Puts a credential in the connector
+      config:
+        method: GET
+        url: https://api.declared.example/y
+        headers:
+            - name: Authorization
+              value: Bearer abcdefghijklmnop
+        outputs:
+            ok: "${true}"
+    - name: fixed_key
+      description: Duplicate name
+      config:
+        method: FETCH
+        url: https://api.declared.example/z

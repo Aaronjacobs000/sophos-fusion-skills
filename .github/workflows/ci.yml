@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    # ubuntu-latest only while the repository is private: macOS and Windows
+    # runners use private-repository minutes much faster. When the repository
+    # goes public, add macos-latest and windows-latest to the os list below.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Unit tests
+        run: node --test
+      - name: Offline validation of every example
+        run: node skills/validation/scripts/validate.mjs all examples --quiet
+      - name: Manifest and skill checks
+        run: node tools/check-manifests.mjs
+      - name: Every script answers --help
+        run: |
+          for s in skills/*/scripts/*.mjs; do
+            node "$s" --help > /dev/null
+          done

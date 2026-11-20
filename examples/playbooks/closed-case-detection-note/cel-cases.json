@@ -1,0 +1,101 @@
+{
+  "template": "template.yaml",
+  "cases": [
+    {
+      "name": "filter fires on the update that closes the case",
+      "from": "triggerHints[0].config.filter",
+      "inputsFile": "sample-event.json",
+      "expect": true
+    },
+    {
+      "name": "filter fires when the event names the change as primaryStatusId",
+      "from": "triggerHints[0].config.filter",
+      "inputs": { "event": "Update", "case": { "primaryStatus": { "name": "closed" }, "delta": { "updatedFields": ["primaryStatusId"] } } },
+      "expect": true
+    },
+    {
+      "name": "filter ignores later edits to a case that is already closed",
+      "from": "triggerHints[0].config.filter",
+      "inputs": { "event": "Update", "case": { "primaryStatus": { "name": "closed" }, "delta": { "updatedFields": ["title"] } } },
+      "expect": false
+    },
+    {
+      "name": "filter ignores status changes that do not close the case",
+      "from": "triggerHints[0].config.filter",
+      "inputs": { "event": "Update", "case": { "primaryStatus": { "name": "active" }, "delta": { "updatedFields": ["primaryStatus.id"] } } },
+      "expect": false
+    },
+    {
+      "name": "threat mitigated is on the default list",
+      "from": "task:check_verdict.let.matches",
+      "inputsFile": "sample-event.json",
+      "expect": true
+    },
+    {
+      "name": "false positive gets no note",
+      "from": "task:check_verdict.let.matches",
+      "inputs": { "case": { "primaryVerdict": { "name": "false_positive" } } },
+      "expect": false
+    },
+    {
+      "name": "MDR true positive matches the default list with no configuration",
+      "from": "task:check_verdict.let.matches",
+      "inputs": { "case": { "primaryVerdict": { "name": "true_positive_malicious" } } },
+      "expect": true
+    },
+    {
+      "name": "a custom verdict list replaces the default",
+      "from": "task:check_verdict.let.matches",
+      "inputs": { "case": { "primaryVerdict": { "name": "threat_mitigated" } }, "configuration": { "verdicts": ["confirmed_security_incident"] } },
+      "expect": false
+    },
+    {
+      "name": "the case's own count wins",
+      "from": "task:settle_count.let.detections",
+      "inputsFile": "sample-event.json",
+      "bindings": { "count_detections": { "outputs": { "evidence": { "detectionsEvidenceCount": 7 } } } },
+      "expect": 7
+    },
+    {
+      "name": "a failed count falls back to the event's evidence list",
+      "from": "task:settle_count.let.detections",
+      "inputsFile": "sample-event.json",
+      "bindings": { "count_detections": {} },
+      "expect": 3
+    },
+    {
+      "name": "comment text, plural",
+      "from": "task:add_note.inputs.comment",
+      "inputsFile": "sample-event.json",
+      "bindings": { "check_verdict": { "variables": { "prefix": "Automated note" } }, "settle_count": { "variables": { "detections": 7 } } },
+      "expect": "Automated note: CSE00042 closed as Threat Mitigated with 7 detections."
+    },
+    {
+      "name": "comment text, one detection",
+      "from": "task:add_note.inputs.comment",
+      "inputsFile": "sample-event.json",
+      "bindings": { "check_verdict": { "variables": { "prefix": "Automated note" } }, "settle_count": { "variables": { "detections": 1 } } },
+      "expect": "Automated note: CSE00042 closed as Threat Mitigated with 1 detection."
+    },
+    {
+      "name": "comments are not internal by default",
+      "from": "task:add_note.inputs.isInternal",
+      "inputs": {},
+      "expect": false
+    },
+    {
+      "name": "outcome explains a verdict that is not on the list",
+      "from": "dsl.outcomeMessage",
+      "inputs": { "case": { "shortId": "CSE00042", "primaryVerdict": { "name": "false_positive" } } },
+      "bindings": { "check_verdict": { "variables": { "matches": false } }, "add_note": {}, "settle_count": {} },
+      "expect": "Verdict false_positive is not in the list, so no note"
+    },
+    {
+      "name": "outcome fails when the note was not added",
+      "from": "dsl.outcomeStatus",
+      "inputs": {},
+      "bindings": { "check_verdict": { "variables": { "matches": true } }, "add_note": {} },
+      "expect": "FAIL"
+    }
+  ]
+}

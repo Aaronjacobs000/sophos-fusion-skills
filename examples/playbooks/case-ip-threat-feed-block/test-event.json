@@ -1,0 +1,15 @@
+{
+  "case": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "shortId": "CSE00042",
+    "tenantId": "000000",
+    "title": "Example case"
+  },
+  "configuration": {
+    "firewall_id": "00000000-0000-4000-8000-0000000000f1",
+    "dry_run": true,
+    "max_indicators": 2,
+    "min_severity": 0.6,
+    "excluded_ips": ["198.51.100.7"]
+  }
+}

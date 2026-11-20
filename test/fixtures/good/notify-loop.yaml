@@ -1,0 +1,78 @@
+apiVersion: v0.0.1
+kind: Playbook
+name: Fixture_LoopNotify
+version: 2.1.0
+title: Fixture loop notify
+description: Loops over items, collects names, and comments once.
+documentation: |
+    # Overview
+    A fixture used by the tests.
+tags:
+    - Type:Notification
+connectors:
+    - Taegis.Case:1.0.5
+triggerHints:
+    - isProactiveResponse: false
+      type: platform
+      config:
+        source: case
+        events:
+            - Comment Added
+        filter: "caseComment(inputs).contains('#summary')"
+inputs:
+    type: object
+    properties:
+        limit:
+            type: integer
+            default: 5
+dsl:
+    name: Fixture_LoopNotify
+    tasks:
+        - name: collect
+          variables:
+            names: []
+          range: "[1, 2, 3]"
+          for:
+              - name: add_one
+                let:
+                    names: "collect.variables.names + ['item ' + string(collect.value)]"
+        - name: maybe
+          condition: size(collect.variables.names) > 1
+          let:
+            joined: collect.variables.names.join(', ')
+        - name: page
+          variables:
+            next: "'start'"
+          while: page.variables.next != ''
+          do:
+              - name: step
+                let:
+                    next: "''"
+        - name: note
+          action: Taegis.Case.addComment
+          retry: 1
+          inputs:
+            caseId: caseId(inputs)
+            comment: "Items: ${maybe.?variables.joined.orValue('none')}"
+        - name: pick
+          switch: "inputs.?limit.orValue(5) > 3 ? 'big' : 'small'"
+          variables:
+            label: "''"
+          case:
+              big:
+                  - name: big_label
+                    let:
+                        label: "'big'"
+              small:
+                  - name: small_label
+                    let:
+                        label: "'small'"
+        - name: wait
+          sleep: 5s
+    outputs:
+        names: collect.variables.names
+        joined: "has(maybe, 'variables.joined') ? maybe.variables.joined : ''"
+        label: pick.variables.label
+        literal: 'plain text, not CEL'
+    outcomeStatus: "'SUCCESS'"
+type: None

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sophos-fusion-skills",
+  "version": "0.1.0",
+  "description": "Author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent, with write confirmations and a rollback ledger.",
+  "author": {
+    "name": "Aaron Jacobs",
+    "url": "https://github.com/Aaronjacobs000"
+  },
+  "homepage": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
+  "repository": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
+  "license": "MIT",
+  "keywords": [
+    "sophos",
+    "fusion",
+    "soar",
+    "playbooks",
+    "automation"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Sophos Fusion Skills",
+        "shortDescription": "Build and test Sophos Fusion playbooks",
+        "longDescription": "Look up connectors, triggers, and CEL functions on a Sophos Fusion tenant, write playbook templates and custom connectors, validate them offline and on the tenant, import test copies, and run and diagnose playbooks. Every write asks first and can be rolled back.",
+        "developerName": "Aaron Jacobs",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Interactive",
+          "Write"
+        ],
+        "websiteURL": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
+        "defaultPrompt": [
+          "Write a Sophos Fusion playbook",
+          "Validate this Fusion template",
+          "Why did my Fusion playbook run fail?"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,163 @@
+apiVersion: v0.0.1
+kind: Playbook
+name: CaseIpThreatFeedBlock
+version: 1.0.0
+title: Block case IPs on Sophos Firewall
+description: Adds the public IPv4 addresses from a case's detections to a Sophos Firewall threat feed. Dry run is on by default.
+documentation: |
+    # Overview
+    An analyst runs this from a case. It collects the IP addresses in the
+    case's detections at or above a severity, drops private and excluded
+    addresses, caps the list, and adds the rest to the MDR threat feed of one
+    Sophos Firewall.
+
+    Dry run is on by default. In a dry run the playbook only reports which
+    addresses it would add. Turn dry_run off on the configured playbook when
+    you are ready.
+
+    # Trigger
+    User Initiated, category Response, context Case. People run it from the
+    case Response tab.
+
+    The template also offers a Generic Trigger (usage Other). Fusion's API runs
+    only Generic Trigger instances, so that second instance is the test twin:
+    the same template, run by the execution skill with a test case event in
+    the parameters and dry_run left on.
+
+    # Inputs
+    | Input | Default | Notes |
+    | ----- | ------- | ----- |
+    | firewall_id | none | The firewall to update. Find IDs with the Sophos Firewall connector's getFirewalls action |
+    | dry_run | true | Report only. Set false to add the addresses |
+    | max_indicators | 10 | Most addresses one run adds (1 to 100) |
+    | min_severity | 0.6 | Only detections at or above this severity (0 to 1) |
+    | excluded_ips | none | Addresses never to add, for example your own egress IPs |
+
+    # What it never adds
+    Private, link-local, and loopback addresses (isPrivateIP), IPv6 addresses
+    (the threat feed type used is ipv4-addr, and Fusion's isIP also accepts
+    IPv6), and anything in excluded_ips.
+
+    # Connections
+    The tenant's Taegis.SophosFirewall platform connection.
+changeNotes: First version
+changeNotesMarkdown: |
+    ## What's Changed
+    * First version
+tags:
+    - Type:Response
+connectorCategories:
+    - Generic
+connectors:
+    - Taegis.SophosFirewall:1.0.6
+playbooks:
+    - Taegis.GetCaseDetections:1.0.1
+triggerHints:
+    - isProactiveResponse: false
+      type: actions
+      config:
+        category: response
+        context: case
+        name: Block case IPs on Sophos Firewall
+    - isProactiveResponse: false
+      type: generic
+      config:
+        usage: other
+inputs:
+    type: object
+    required:
+        - configuration
+    properties:
+        configuration:
+            title: Configuration
+            type: object
+            required:
+                - firewall_id
+            properties:
+                firewall_id:
+                    title: Firewall ID
+                    description: The Sophos Firewall whose threat feed gets the addresses.
+                    type: string
+                dry_run:
+                    title: Dry run
+                    description: Report the addresses only. Turn off to add them.
+                    type: boolean
+                    default: true
+                max_indicators:
+                    title: Most addresses per run
+                    type: integer
+                    default: 10
+                    minimum: 1
+                    maximum: 100
+                min_severity:
+                    title: Minimum detection severity
+                    description: 0 to 1. 0.6 is high and above.
+                    type: number
+                    default: 0.6
+                excluded_ips:
+                    title: Never add these addresses
+                    type: array
+                    items:
+                        type: string
+                    default: []
+outputs:
+    type: object
+    properties:
+        dry_run:
+            type: boolean
+        planned:
+            type: array
+        over_cap:
+            type: integer
+        added:
+            type: boolean
+        transaction_id:
+            type: string
+dsl:
+    name: CaseIpThreatFeedBlock
+    description: Add a case's public detection IPs to a Sophos Firewall threat feed
+    tasks:
+        - name: settings
+          description: Read the configuration once, with safe defaults
+          let:
+            dry_run: inputs.?configuration.dry_run.orValue(true) != false
+            cap: "int(inputs.?configuration.max_indicators.orValue(10)) < 1 ? 1 : int(inputs.?configuration.max_indicators.orValue(10)) > 100 ? 100 : int(inputs.?configuration.max_indicators.orValue(10))"
+            min_severity: double(inputs.?configuration.min_severity.orValue(0.6))
+            excluded: inputs.?configuration.excluded_ips.orValue([])
+            firewall_id: inputs.?configuration.firewall_id.orValue('')
+        - name: get_detections
+          description: The case's detections at or above the severity
+          condition: caseId(inputs) != ''
+          exec: Taegis.GetCaseDetections
+          optional: true
+          inputs:
+            tenant_id: caseTenantId(inputs)
+            case_id: caseId(inputs)
+            severity_filter: settings.variables.min_severity
+            limit: 500
+        - name: collect
+          description: Public IPv4 addresses, minus exclusions, capped
+          let:
+            eligible: "unique(flatten(get_detections.?outputs.detections.orValue([]).map(d, detectionIPs(d)))).filter(ip, isIP(ip) && !ip.contains(':') && !isPrivateIP(ip) && !(ip in settings.variables.excluded))"
+        - name: plan
+          description: Apply the per-run cap
+          let:
+            planned: "size(collect.variables.eligible) > settings.variables.cap ? collect.variables.eligible.slice(0, settings.variables.cap) : collect.variables.eligible"
+            over_cap: "size(collect.variables.eligible) > settings.variables.cap ? size(collect.variables.eligible) - settings.variables.cap : 0"
+        - name: add_indicators
+          description: Add the planned addresses to the threat feed (skipped in a dry run)
+          condition: "!settings.variables.dry_run && size(plan.variables.planned) > 0 && settings.variables.firewall_id != ''"
+          action: Taegis.SophosFirewall.createThreatFeedIndicator
+          optional: true
+          inputs:
+            firewallId: settings.variables.firewall_id
+            indicators: "plan.variables.planned.map(ip, {'type': 'ipv4-addr', 'value': ip})"
+    outputs:
+        dry_run: settings.variables.dry_run
+        planned: plan.variables.planned
+        over_cap: plan.variables.over_cap
+        added: add_indicators.?outputs.transactionId.hasValue()
+        transaction_id: add_indicators.?outputs.transactionId.orValue('')
+    outcomeStatus: "settings.variables.dry_run || size(plan.variables.planned) == 0 ? 'SUCCESS' : settings.variables.firewall_id == '' ? 'FAIL' : add_indicators.?outputs.transactionId.hasValue() ? 'SUCCESS' : 'FAIL'"
+    outcomeMessage: "size(plan.variables.planned) == 0 ? 'No public IPv4 addresses to add' : settings.variables.dry_run ? 'Dry run: would add ' + string(size(plan.variables.planned)) + ' addresses: ' + plan.variables.planned.join(', ') + (plan.variables.over_cap > 0 ? ' (' + string(plan.variables.over_cap) + ' more over the cap)' : '') : settings.variables.firewall_id == '' ? 'No firewall_id set, so nothing was added' : add_indicators.?outputs.transactionId.hasValue() ? 'Added ' + string(size(plan.variables.planned)) + ' addresses, transaction ' + add_indicators.outputs.transactionId : 'The firewall did not accept the addresses'"
+type: None

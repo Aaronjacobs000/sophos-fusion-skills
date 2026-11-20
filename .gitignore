@@ -1,0 +1,9 @@
+node_modules/
+.DS_Store
+*.log
+.env
+.env.*
+test/.tmp-*
+# Tenant exports and live-test output stay out of the repo
+exports/
+*.export.yaml

@@ -1,0 +1,96 @@
+{
+  "template": "template.yaml",
+  "cases": [
+    {
+      "name": "closed status ID is picked from the status list",
+      "from": "task:pick_closed.let.closed_ids",
+      "bindings": {
+        "get_statuses": {
+          "outputs": {
+            "primaryStatuses": [
+              { "id": "status-open", "name": "open", "title": "Open" },
+              { "id": "status-closed", "name": "closed", "title": "Closed" }
+            ]
+          }
+        }
+      },
+      "expect": ["status-closed"]
+    },
+    {
+      "name": "no statuses gives no closed ID",
+      "from": "task:pick_closed.let.closed_ids",
+      "bindings": { "get_statuses": { "outputs": { "primaryStatuses": [] } } },
+      "expect": []
+    },
+    {
+      "name": "a skipped lookup leaves the status list empty, not failed",
+      "from": "task:pick_closed.let.closed_ids",
+      "bindings": { "get_statuses": {} },
+      "expect": []
+    },
+    {
+      "name": "verdict lookup runs only when a closed status exists",
+      "from": "task:get_closed_verdicts.condition",
+      "bindings": { "pick_closed": { "variables": { "closed_ids": ["status-closed"] } } },
+      "expect": true
+    },
+    {
+      "name": "verdict lookup is skipped without a closed status",
+      "from": "task:get_closed_verdicts.condition",
+      "bindings": { "pick_closed": { "variables": { "closed_ids": [] } } },
+      "expect": false
+    },
+    {
+      "name": "automation verdicts are off by default",
+      "from": "task:get_closed_verdicts.inputs.includeAutomationVerdicts",
+      "inputs": {},
+      "expect": false
+    },
+    {
+      "name": "automation verdicts can be turned on",
+      "from": "task:get_closed_verdicts.inputs.includeAutomationVerdicts",
+      "inputs": { "include_automation_verdicts": true },
+      "expect": true
+    },
+    {
+      "name": "verdicts are reduced to name and title",
+      "from": "task:summarize_names.let.verdicts",
+      "bindings": {
+        "get_closed_verdicts": {
+          "outputs": {
+            "primaryVerdicts": [
+              { "id": "v1", "name": "false_positive", "title": "False Positive", "description": "Not a threat", "tenantId": "" }
+            ]
+          }
+        }
+      },
+      "expect": [{ "name": "false_positive", "title": "False Positive" }]
+    },
+    {
+      "name": "skipped verdict lookup gives an empty list",
+      "from": "task:summarize_names.let.verdicts",
+      "bindings": { "get_closed_verdicts": {} },
+      "expect": []
+    },
+    {
+      "name": "outcome message counts each list",
+      "from": "dsl.outcomeMessage",
+      "bindings": {
+        "summarize_names": {
+          "variables": {
+            "types": [{ "name": "security_case" }],
+            "statuses": [{ "name": "open" }, { "name": "closed" }],
+            "verdicts": [{ "name": "false_positive" }, { "name": "threat_mitigated" }, { "name": "informational" }]
+          }
+        }
+      },
+      "expect": "Found 1 case types, 2 statuses, and 3 closing verdicts"
+    },
+    {
+      "name": "outcome fails when no statuses came back",
+      "from": "dsl.outcomeStatus",
+      "bindings": { "summarize_names": { "variables": { "types": [], "statuses": [], "verdicts": [] } } },
+      "expect": "FAIL"
+    }
+  ]
+}

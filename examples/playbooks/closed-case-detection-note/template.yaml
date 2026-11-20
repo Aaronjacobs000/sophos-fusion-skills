@@ -1,0 +1,129 @@
+apiVersion: v0.0.1
+kind: Playbook
+name: ClosedCaseDetectionNote
+version: 1.0.0
+title: Closed case detection note
+description: When a case closes with a true positive verdict, adds a comment saying how many detections it had.
+documentation: |
+    # Overview
+    When someone closes a case with one of the verdicts you list, this playbook
+    adds one comment to the case, for example:
+
+    Automated note: CSE00042 closed as Threat Mitigated with 7 detections.
+
+    It writes only that comment. It does not change the case status, verdict,
+    or evidence, and it calls nothing outside Sophos Fusion.
+
+    # Trigger
+    Platform Events, source Case, event Update, with this filter:
+
+        casePrimaryStatusName(inputs) == 'closed' &&
+        (caseFieldChanged(inputs, 'primaryStatus.id') || caseFieldChanged(inputs, 'primaryStatusId'))
+
+    The filter fires once, on the update that closes the case, not on later
+    edits to a case that is already closed.
+
+    # Inputs
+    | Input | Default | Notes |
+    | ----- | ------- | ----- |
+    | verdicts | true positive names for MDR and XDR tenants | Verdict names that get a note. Run Case reference lookup to see your tenant's names |
+    | comment_prefix | Automated note | The comment starts with this |
+    | internal | false | Mark the comment internal (only partner users see it) |
+
+    # Connections
+    The tenant's Taegis.Case platform connection.
+changeNotes: First version
+changeNotesMarkdown: |
+    ## What's Changed
+    * First version
+tags:
+    - Type:Notification
+connectorCategories:
+    - Generic
+connectors:
+    - Taegis.Case:1.0.5
+triggerHints:
+    - isProactiveResponse: false
+      type: platform
+      config:
+        source: case
+        events:
+            - Update
+        filter: "casePrimaryStatusName(inputs) == 'closed' && (caseFieldChanged(inputs, 'primaryStatus.id') || caseFieldChanged(inputs, 'primaryStatusId'))"
+      celHints:
+        - name: Closed as a true positive
+          expr: "casePrimaryStatusName(inputs) == 'closed' && casePrimaryVerdictName(inputs) in ['true_positive_malicious', 'true_positive_benign', 'confirmed_security_incident', 'threat_mitigated']"
+inputs:
+    type: object
+    properties:
+        configuration:
+            title: Configuration
+            type: object
+            properties:
+                verdicts:
+                    title: Verdicts that get a note
+                    description: Primary verdict names, as Case reference lookup lists them.
+                    type: array
+                    items:
+                        type: string
+                    default:
+                        - true_positive_malicious
+                        - true_positive_benign
+                        - confirmed_security_incident
+                        - threat_mitigated
+                comment_prefix:
+                    title: Comment prefix
+                    type: string
+                    default: Automated note
+                internal:
+                    title: Internal comment
+                    description: Only partner users see internal comments.
+                    type: boolean
+                    default: false
+outputs:
+    type: object
+    properties:
+        noted:
+            type: boolean
+        detections:
+            type: integer
+dsl:
+    name: ClosedCaseDetectionNote
+    description: Note the detection count on a case closed as a true positive
+    tasks:
+        - name: check_verdict
+          description: Does the closing verdict get a note?
+          let:
+            matches: "casePrimaryVerdictName(inputs) in inputs.?configuration.verdicts.orValue(['true_positive_malicious', 'true_positive_benign', 'confirmed_security_incident', 'threat_mitigated'])"
+            prefix: "inputs.?configuration.comment_prefix.orValue('Automated note')"
+        - name: count_detections
+          description: Ask the case for its detection count, which the event may not carry
+          condition: check_verdict.variables.matches
+          action: Taegis.Case.getEvidenceCustom
+          retry: 2
+          optional: true
+          inputs:
+            tenant_id: caseTenantId(inputs)
+            id: caseId(inputs)
+            fields: 'detectionsEvidenceCount'
+        - name: settle_count
+          description: Use the case's count, or the event's evidence list if the lookup gave nothing
+          condition: check_verdict.variables.matches
+          let:
+            detections: "int(count_detections.?outputs.evidence.detectionsEvidenceCount.orValue(size(caseDetectionEvidence(inputs))))"
+        - name: add_note
+          description: Add the comment
+          condition: check_verdict.variables.matches
+          action: Taegis.Case.addComment
+          retry: 2
+          inputs:
+            tenant_id: caseTenantId(inputs)
+            caseId: caseId(inputs)
+            comment: "${check_verdict.variables.prefix}: ${caseShortId(inputs)} closed as ${casePrimaryVerdictTitle(inputs)} with ${string(settle_count.variables.detections)} detection${settle_count.variables.detections == 1 ? '' : 's'}."
+            isInternal: inputs.?configuration.internal.orValue(false) == true
+    outputs:
+        noted: has(add_note, 'outputs.comment')
+        detections: settle_count.?variables.detections.orValue(0)
+    outcomeStatus: "!check_verdict.variables.matches ? 'SUCCESS' : has(add_note, 'outputs.comment') ? 'SUCCESS' : 'FAIL'"
+    outcomeMessage: "!check_verdict.variables.matches ? 'Verdict ' + casePrimaryVerdictName(inputs) + ' is not in the list, so no note' : has(add_note, 'outputs.comment') ? 'Noted ' + string(settle_count.?variables.detections.orValue(0)) + ' detections on ' + caseShortId(inputs) : 'Could not add the note to ' + caseShortId(inputs)"
+type: None

@@ -1,0 +1,27 @@
+{
+  "event": "Update",
+  "case": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "shortId": "CSE00042",
+    "tenantId": "000000",
+    "title": "Example case",
+    "primaryStatus": { "id": "00000000-0000-4000-8000-0000000000c1", "name": "closed", "title": "Closed" },
+    "primaryVerdict": { "id": "00000000-0000-4000-8000-0000000000a1", "name": "threat_mitigated", "title": "Threat Mitigated" },
+    "detectionEvidence": [
+      { "id": "00000000-0000-4000-8000-0000000000d1", "isGenesis": true },
+      { "id": "00000000-0000-4000-8000-0000000000d2", "isGenesis": false },
+      { "id": "00000000-0000-4000-8000-0000000000d3", "isGenesis": false }
+    ],
+    "delta": {
+      "updatedFields": ["primaryStatus.id", "primaryVerdict.id", "closedAt"],
+      "changes": {
+        "primaryStatusId": { "before": "00000000-0000-4000-8000-0000000000b1", "after": "00000000-0000-4000-8000-0000000000c1" }
+      }
+    }
+  },
+  "configuration": {
+    "verdicts": ["true_positive_malicious", "true_positive_benign", "confirmed_security_incident", "threat_mitigated"],
+    "comment_prefix": "Automated note",
+    "internal": false
+  }
+}

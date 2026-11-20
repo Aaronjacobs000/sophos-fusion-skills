@@ -1,0 +1,112 @@
+apiVersion: v0.0.1
+kind: Playbook
+name: CaseReferenceLookup
+version: 1.0.0
+title: Case reference lookup
+description: Lists the case types, statuses, and closing verdicts this tenant uses, so trigger filters can name them exactly.
+documentation: |
+    # Overview
+    Case verdict and status names differ between tenants. An MDR tenant closes
+    cases as true_positive_malicious, while an XDR tenant uses names such as
+    threat_mitigated. A trigger filter that names the wrong one never matches.
+
+    Run this playbook once on a tenant to see the exact names to use.
+
+    It only reads. It calls three read actions on the platform Case connector and
+    returns names and titles. It changes nothing.
+
+    # Trigger
+    Generic Trigger. Run it from the console, with the execution skill
+    (executePlaybookInstanceV2), or on a schedule.
+
+    # Inputs
+    | Input | Default | Notes |
+    | ----- | ------- | ----- |
+    | include_automation_verdicts | false | Also list verdicts that only automation applies |
+
+    # Outputs
+    types, statuses, verdicts (closing verdicts), and closed_verdict_names, a
+    plain list to paste into a filter such as
+    casePrimaryVerdictName(inputs) in [...].
+
+    # Connections
+    The tenant's Taegis.Case platform connection.
+changeNotes: First version
+changeNotesMarkdown: |
+    ## What's Changed
+    * First version
+tags:
+    - Type:Enrichment
+connectorCategories:
+    - Generic
+connectors:
+    - Taegis.Case:1.0.5
+triggerHints:
+    - isProactiveResponse: false
+      type: generic
+      config:
+        usage: other
+    - isProactiveResponse: false
+      type: generic
+      config:
+        usage: schedule
+inputs:
+    type: object
+    properties:
+        include_automation_verdicts:
+            title: Include automation verdicts
+            description: Also list verdicts that only automation applies.
+            type: boolean
+            default: false
+outputs:
+    type: object
+    properties:
+        types:
+            type: array
+        statuses:
+            type: array
+        verdicts:
+            type: array
+        closed_verdict_names:
+            type: array
+        source:
+            type: string
+dsl:
+    name: CaseReferenceLookup
+    description: Read the tenant's case reference data
+    tasks:
+        - name: get_types
+          description: Case types on this tenant
+          action: Taegis.Case.getTypes
+          retry: 2
+        - name: get_statuses
+          description: Primary statuses on this tenant
+          action: Taegis.Case.getPrimaryStatuses
+          retry: 2
+        - name: pick_closed
+          description: The ID of the closed status, which verdicts belong to
+          let:
+            closed_ids: "get_statuses.?outputs.primaryStatuses.orValue([]).filter(s, s.name == 'closed').map(s, s.id)"
+        - name: get_closed_verdicts
+          description: Verdicts a case can close with
+          condition: size(pick_closed.variables.closed_ids) > 0
+          action: Taegis.Case.getPrimaryVerdicts
+          retry: 2
+          inputs:
+            primaryStatusId: pick_closed.variables.closed_ids[0]
+            includeAutomationVerdicts: inputs.?include_automation_verdicts.orValue(false) == true
+        - name: summarize_names
+          description: Keep names and titles only
+          let:
+            types: "get_types.?outputs.types.orValue([]).map(t, {'name': t.name, 'title': t.title, 'managedBy': t.managedBy})"
+            statuses: "get_statuses.?outputs.primaryStatuses.orValue([]).map(s, {'name': s.name, 'title': s.title})"
+            verdicts: "get_closed_verdicts.?outputs.primaryVerdicts.orValue([]).map(v, {'name': v.name, 'title': v.title})"
+    outputs:
+        types: summarize_names.variables.types
+        statuses: summarize_names.variables.statuses
+        verdicts: summarize_names.variables.verdicts
+        closed_verdict_names: summarize_names.variables.verdicts.map(v, v.name)
+        source: 'Fusion case reference data'
+    outcomeStatus: "size(summarize_names.variables.statuses) > 0 ? 'SUCCESS' : 'FAIL'"
+    outcomeMessage: "'Found ' + string(size(summarize_names.variables.types)) + ' case types, ' + string(size(summarize_names.variables.statuses)) + ' statuses, and ' + string(size(summarize_names.variables.verdicts)) + ' closing verdicts'"
+type: None

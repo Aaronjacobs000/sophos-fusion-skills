@@ -1,0 +1,141 @@
+apiVersion: v0.0.1
+kind: Connector
+name: FirstEpss
+version: 1.0.0
+title: FIRST EPSS
+description: Exploit Prediction Scoring System (EPSS) scores from FIRST for CVE IDs. Public API, no key.
+documentation: |
+    # Overview
+    EPSS estimates the probability that a CVE is exploited in the wild in the
+    next 30 days. FIRST publishes the scores daily through a free public API.
+    Use this connector to rank vulnerabilities by likely exploitation, for
+    example to decide which CVEs on a case need attention first.
+
+    # Hosts
+    This connector calls one host, over HTTPS, with GET requests only:
+    - api.first.org
+
+    # Authentication
+    None. The API is public and needs no key. Create the connection with auth
+    type None and no credentials.
+
+    # Data
+    Requests carry CVE IDs only. Responses carry scores, percentiles, and
+    dates. No personal data goes either way.
+
+    # Actions
+    | Action | Inputs | Outputs |
+    | ------ | ------ | ------- |
+    | validate | none | outcome |
+    | getScores | cves (list of CVE IDs, up to 100) | scores, total, outcome |
+    | getScoresOnDate | cves, date (YYYY-MM-DD) | scores, total, outcome |
+
+    getScores drops anything that is not shaped like a CVE ID before it calls
+    the API, so a stray value never reaches the query string.
+
+    # Source
+    https://www.first.org/epss/api
+tags:
+    - Type:Enrichment
+categories:
+    - Generic
+method: http
+vendorName: FIRST
+vendorProduct: EPSS
+vendorVersion: "1.0"
+authTypes:
+    - None
+actions:
+    - name: validate
+      description: Check that the EPSS API answers
+      inputs:
+        type: object
+        properties: {}
+      outputs:
+        type: object
+        properties:
+            outcome:
+                type: string
+                enum:
+                    - success
+                    - failure
+      config:
+        method: GET
+        url: https://api.first.org/data/v1/epss?limit=1
+        contentType: application/json
+        headers: []
+        error: "${has(status, 'code') && status.code == 200 ? '' : 'EPSS API answered ' + string(status.?code.orValue(0))}"
+        outputs:
+            outcome: "${has(status, 'code') && status.code == 200 ? 'success' : 'failure'}"
+    - name: getScores
+      description: Latest EPSS score and percentile for up to 100 CVE IDs
+      inputs:
+        type: object
+        required:
+            - cves
+        properties:
+            cves:
+                title: CVE IDs
+                description: For example CVE-2021-44228. Values that are not CVE IDs are dropped.
+                type: array
+                items:
+                    type: string
+      outputs:
+        type: object
+        properties:
+            scores:
+                description: One entry per CVE found, with cve, epss (0 to 1), percentile (0 to 1), and date
+                type: array
+            total:
+                type: integer
+            outcome:
+                type: string
+                enum:
+                    - success
+                    - failure
+      config:
+        method: GET
+        url: "https://api.first.org/data/v1/epss?cve=${cel.bind(ids, inputs.cves.map(c, c.trim().upperAscii()).filter(c, c.matches('^CVE-[0-9]+-[0-9]+$')), ids.slice(0, size(ids) > 100 ? 100 : size(ids)).join(','))}"
+        contentType: application/json
+        headers: []
+        error: "${has(status, 'code') && status.code == 200 ? '' : 'EPSS API answered ' + string(status.?code.orValue(0))}"
+        outputs:
+            scores: "${body.?data.orValue([]).map(d, {'cve': d.cve, 'epss': double(d.epss), 'percentile': double(d.percentile), 'date': d.date})}"
+            total: "${int(body.?total.orValue(0))}"
+            outcome: "${has(status, 'code') && status.code == 200 ? 'success' : 'failure'}"
+    - name: getScoresOnDate
+      description: EPSS score and percentile for CVE IDs as published on a past date
+      inputs:
+        type: object
+        required:
+            - cves
+            - date
+        properties:
+            cves:
+                title: CVE IDs
+                type: array
+                items:
+                    type: string
+            date:
+                title: Date
+                description: YYYY-MM-DD, on or after 2022-03-01 for EPSS v2 and later
+                type: string
+      outputs:
+        type: object
+        properties:
+            scores:
+                type: array
+            total:
+                type: integer
+            outcome:
+                type: string
+      config:
+        method: GET
+        url: "https://api.first.org/data/v1/epss?cve=${cel.bind(ids, inputs.cves.map(c, c.trim().upperAscii()).filter(c, c.matches('^CVE-[0-9]+-[0-9]+$')), ids.slice(0, size(ids) > 100 ? 100 : size(ids)).join(','))}&date=${inputs.date.matches('^[0-9]+-[0-9]+-[0-9]+$') ? inputs.date : ''}"
+        contentType: application/json
+        headers: []
+        error: "${has(status, 'code') && status.code == 200 ? '' : 'EPSS API answered ' + string(status.?code.orValue(0))}"
+        outputs:
+            scores: "${body.?data.orValue([]).map(d, {'cve': d.cve, 'epss': double(d.epss), 'percentile': double(d.percentile), 'date': d.date})}"
+            total: "${int(body.?total.orValue(0))}"
+            outcome: "${has(status, 'code') && status.code == 200 ? 'success' : 'failure'}"

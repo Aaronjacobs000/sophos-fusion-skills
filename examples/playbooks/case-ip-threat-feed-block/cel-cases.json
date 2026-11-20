@@ -1,0 +1,129 @@
+{
+  "template": "template.yaml",
+  "cases": [
+    {
+      "name": "dry run is on when nothing is configured",
+      "from": "task:settings.let.dry_run",
+      "inputs": {},
+      "expect": true
+    },
+    {
+      "name": "dry run stays on unless set to false",
+      "from": "task:settings.let.dry_run",
+      "inputs": { "configuration": { "dry_run": true } },
+      "expect": true
+    },
+    {
+      "name": "dry run turns off only when set to false",
+      "from": "task:settings.let.dry_run",
+      "inputs": { "configuration": { "dry_run": false } },
+      "expect": false
+    },
+    {
+      "name": "cap defaults to 10",
+      "from": "task:settings.let.cap",
+      "inputs": {},
+      "expect": 10
+    },
+    {
+      "name": "cap below 1 is raised to 1",
+      "from": "task:settings.let.cap",
+      "inputs": { "configuration": { "max_indicators": 0 } },
+      "expect": 1
+    },
+    {
+      "name": "cap above 100 is held at 100",
+      "from": "task:settings.let.cap",
+      "inputs": { "configuration": { "max_indicators": 5000 } },
+      "expect": 100
+    },
+    {
+      "name": "only public IPv4 addresses that are not excluded are eligible",
+      "from": "task:collect.let.eligible",
+      "inputs": {},
+      "bindings": {
+        "settings": { "variables": { "excluded": ["198.51.100.7"] } },
+        "get_detections": {
+          "outputs": {
+            "detections": [
+              { "entities": { "entities": ["ipAddress:203.0.113.10", "ipAddress:10.0.0.5", "hostName:web01"] } },
+              { "entities": { "entities": ["ipAddress:203.0.113.10", "ipAddress:198.51.100.7", "ipAddress:2001:db8::1", "ipAddress:127.0.0.1"] } },
+              { "entities": { "entities": ["ipAddress:192.0.2.44", "ipAddress:169.254.10.1"] } }
+            ]
+          }
+        }
+      },
+      "expect": ["203.0.113.10", "192.0.2.44"]
+    },
+    {
+      "name": "a failed detection lookup gives nothing to add",
+      "from": "task:collect.let.eligible",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "excluded": [] } }, "get_detections": {} },
+      "expect": []
+    },
+    {
+      "name": "the cap keeps the first addresses",
+      "from": "task:plan.let.planned",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "cap": 2 } }, "collect": { "variables": { "eligible": ["203.0.113.1", "203.0.113.2", "203.0.113.3"] } } },
+      "expect": ["203.0.113.1", "203.0.113.2"]
+    },
+    {
+      "name": "over_cap counts what the cap left out",
+      "from": "task:plan.let.over_cap",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "cap": 2 } }, "collect": { "variables": { "eligible": ["203.0.113.1", "203.0.113.2", "203.0.113.3"] } } },
+      "expect": 1
+    },
+    {
+      "name": "the firewall is not touched in a dry run",
+      "from": "task:add_indicators.condition",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "dry_run": true, "firewall_id": "fw-1" } }, "plan": { "variables": { "planned": ["203.0.113.1"] } } },
+      "expect": false
+    },
+    {
+      "name": "the firewall is not touched without a firewall ID",
+      "from": "task:add_indicators.condition",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "dry_run": false, "firewall_id": "" } }, "plan": { "variables": { "planned": ["203.0.113.1"] } } },
+      "expect": false
+    },
+    {
+      "name": "the firewall is updated only with dry run off, a firewall, and addresses",
+      "from": "task:add_indicators.condition",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "dry_run": false, "firewall_id": "fw-1" } }, "plan": { "variables": { "planned": ["203.0.113.1"] } } },
+      "expect": true
+    },
+    {
+      "name": "indicators use the ipv4-addr type",
+      "from": "task:add_indicators.inputs.indicators",
+      "inputs": {},
+      "bindings": { "plan": { "variables": { "planned": ["203.0.113.1"] } } },
+      "expect": [{ "type": "ipv4-addr", "value": "203.0.113.1" }]
+    },
+    {
+      "name": "dry run message lists the addresses and the overflow",
+      "from": "dsl.outcomeMessage",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "dry_run": true, "firewall_id": "fw-1" } }, "plan": { "variables": { "planned": ["203.0.113.1", "203.0.113.2"], "over_cap": 3 } }, "add_indicators": {} },
+      "expect": "Dry run: would add 2 addresses: 203.0.113.1, 203.0.113.2 (3 more over the cap)"
+    },
+    {
+      "name": "a dry run reports success",
+      "from": "dsl.outcomeStatus",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "dry_run": true, "firewall_id": "" } }, "plan": { "variables": { "planned": ["203.0.113.1"] } }, "add_indicators": {} },
+      "expect": "SUCCESS"
+    },
+    {
+      "name": "a live run that the firewall refused reports failure",
+      "from": "dsl.outcomeStatus",
+      "inputs": {},
+      "bindings": { "settings": { "variables": { "dry_run": false, "firewall_id": "fw-1" } }, "plan": { "variables": { "planned": ["203.0.113.1"] } }, "add_indicators": {} },
+      "expect": "FAIL"
+    }
+  ]
+}

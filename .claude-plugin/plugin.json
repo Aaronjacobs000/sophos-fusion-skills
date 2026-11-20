@@ -1,0 +1,13 @@
+{
+  "name": "sophos-fusion-skills",
+  "version": "0.1.0",
+  "description": "Author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent, with local scripts, write confirmations, a rollback ledger, and test copies by default.",
+  "author": {
+    "name": "Aaron Jacobs",
+    "url": "https://github.com/Aaronjacobs000"
+  },
+  "homepage": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
+  "repository": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
+  "license": "MIT",
+  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation", "cel", "security-operations"]
+}

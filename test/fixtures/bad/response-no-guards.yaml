@@ -1,0 +1,31 @@
+apiVersion: v0.0.1
+kind: Playbook
+name: Fixture_ResponseNoGuards
+version: 1.0.0
+title: Response without guards
+description: Isolates hosts with no dry run and no cap.
+tags:
+    - Type:Response
+connectors:
+    - Taegis.SophosEndpoint:1.0.0
+triggerHints:
+    - isProactiveResponse: true
+      type: actions
+      config:
+        category: response
+        context: Host
+        name: Isolate
+inputs:
+    type: object
+    properties:
+        dry_run:
+            type: string
+            default: "yes"
+dsl:
+    name: Fixture_ResponseNoGuards
+    tasks:
+        - name: isolate
+          action: Taegis.SophosEndpoint.isolateEndpoint
+          inputs:
+            id: inputs.host.id
+type: None

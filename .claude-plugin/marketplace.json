@@ -1,0 +1,18 @@
+{
+  "name": "sophos-fusion-skills",
+  "description": "Unofficial agent skills for Sophos Fusion playbooks and connectors.",
+  "owner": {
+    "name": "Aaron Jacobs",
+    "url": "https://github.com/Aaronjacobs000"
+  },
+  "plugins": [
+    {
+      "name": "sophos-fusion-skills",
+      "source": "./",
+      "description": "Author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent.",
+      "version": "0.1.0",
+      "category": "security",
+      "tags": ["sophos", "fusion", "soar", "playbooks"]
+    }
+  ]
+}

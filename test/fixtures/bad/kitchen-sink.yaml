@@ -1,0 +1,89 @@
+apiVersion: v0.0.1
+kind: Playbook
+tenantId: "123456"
+name: Bad Name With Spaces
+version: 1.0
+title: Bad
+description: Every rule should fire somewhere in here.
+connectors:
+    - Taegis.Case
+    - Taegis.Webhook:1.1.4
+triggerHints:
+    - type: platform
+      config:
+        source: nosuch
+    - type: platform
+      config:
+        source: case
+        events:
+            - Exploded
+        filter: "caseId(inputs) = 'x'"
+    - type: actions
+      config:
+        category: destroy
+    - type: generic
+      config:
+        usage: sometimes
+    - type: weird
+dsl:
+    name: Bad
+    tasks:
+        - name: Bad-Name
+          let:
+            v: 1
+        - name: int
+          let:
+            v: 1
+        - name: dup
+          let:
+            v: 1
+        - name: dup
+          let:
+            v: 1
+        - name: reads_later
+          let:
+            v: later.variables.x
+        - name: later
+          let:
+            x: 1
+        - name: ghost_ref
+          let:
+            v: nosuch.outputs.x
+        - name: syntax
+          let:
+            v: "1 +"
+        - name: each_item
+          range: "[1]"
+          for:
+              - name: inner
+                let:
+                    q: 1
+        - name: outside
+          let:
+            v: inner.variables.q
+            w: each_item.value
+        - name: loop
+          let:
+            v: 1
+        - name: skippable
+          condition: "false"
+          action: Taegis.Webhook.post
+          inputs:
+            webhook_url: inputs.secret_webhook_url
+        - name: reads_skipped
+          let:
+            v: skippable.outputs.body
+        - name: undeclared_connector
+          action: Acme.Thing.doIt
+        - name: bad_sleep
+          sleep: soon please
+        - name: unknown_key
+          frobnicate: true
+          let:
+            v: 1
+        - name: hardcoded
+          let:
+            token: "'Bearer abcdefghijklmnopqrstuvwxyz0123'"
+            tenant_id: "'654321'"
+    outputs:
+        out: skippable.outputs.body
