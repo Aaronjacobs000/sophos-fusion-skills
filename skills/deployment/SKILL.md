@@ -85,6 +85,7 @@ Rollback refuses objects recorded on a different tenant, and skips any object wh
 ```bash
 node $D/deploy.mjs list --kind templates|connectors|connections|instances|schedules [--custom] [--search x]
 node $D/deploy.mjs export --template <name> --out file.yaml [--clean]
+node $D/deploy.mjs show --kind instance --id <id>                         # one object in full: trigger, filter, inputs, connections
 node $D/deploy.mjs diff template.yaml                                    # compare the file with the tenant copy
 ```
 

@@ -69,6 +69,27 @@ describe('FusionClient', () => {
     await assert.rejects(() => client().request('mutation { createConnection { id } }'), MutationUnconfirmedError);
   });
 
+  test('a read retries the transient "error response from central" fault', async () => {
+    const fault = { status: 200, json: { data: { playbooks: null }, errors: [{ message: 'error response from central: ', path: ['tenant', 'centralTenant'], extensions: { code: 'DOWNSTREAM_SERVICE_ERROR' } }] } };
+    mock = installFetch([...authRules(), { match: { op: 'playbooks' }, responses: [fault, fault, { status: 200, json: { data: { playbooks: [] } } }] }]);
+    const r = await client().request('query { playbooks { id } }');
+    assert.deepEqual(r.data.playbooks, []);
+    assert.equal(mock.calls.filter((c) => c.op === 'playbooks').length, 3);
+  });
+
+  test('a write is not retried on that fault', async () => {
+    const fault = { status: 200, json: { data: { importPlaybookV2: null }, errors: [{ message: 'error response from central: ', path: ['tenant', 'centralTenant'] }] } };
+    mock = installFetch([...authRules(), { match: { op: 'deletePlaybook' }, respond: fault }]);
+    await assert.rejects(() => client().request('mutation { deletePlaybook(input: {playbookId: "x"}) { id } }'), GraphQLError);
+    assert.equal(mock.calls.filter((c) => c.op === 'deletePlaybook').length, 1);
+  });
+
+  test('other GraphQL errors on a read are not retried', async () => {
+    mock = installFetch([...authRules(), { match: { op: 'playbook' }, respond: { status: 200, json: { data: { playbook: null }, errors: [{ message: 'PB21: record not found' }] } } }]);
+    await assert.rejects(() => client().request('query { playbook(playbookId: "x") { id } }'), GraphQLError);
+    assert.equal(mock.calls.filter((c) => c.op === 'playbook').length, 1);
+  });
+
   test('a persistent 429 surfaces as an HTTP error after retries', async () => {
     mock = installFetch([...authRules(), { match: { op: 'playbooks' }, respond: { status: 429 } }]);
     await assert.rejects(() => client().request('query { playbooks { id } }'), (e) => e instanceof HttpError && e.status === 429);

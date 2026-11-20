@@ -48,6 +48,7 @@ The validator lets a wrong action name and a read of a later task through. Both 
 | Answer | Meaning |
 | ------ | ------- |
 | HTTP 503 `tenant ... not found or not accessible` | Fusion does not hold that tenant for this credential. The same every time; not retried |
+| `error response from central` at path `tenant.centralTenant` | a passing platform fault on reads. Reads retry it up to three times; writes never do |
 | HTTP 429 | rate limited. Reads and writes wait for Retry-After (at most 60 s) and try again |
 | HTTP 5xx on a write | the write may or may not have happened. Never repeated: read back first |
 | a 3xx redirect | refused. Nothing is sent to the new address |

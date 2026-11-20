@@ -193,6 +193,19 @@ const spec = {
         }
       },
     },
+    show: {
+      summary: 'Show one object in full, for example an instance with its trigger and filter. Read-only',
+      options: {
+        kind: { type: 'string', required: true, help: 'playbook, connector, connection, instance or schedule' },
+        id: { type: 'string', required: true, help: 'Object ID' },
+      },
+      run: async (ctx, args) => {
+        if (!['playbook', 'connector', 'connection', 'instance', 'schedule'].includes(args.kind)) throw new UsageError('--kind must be playbook, connector, connection, instance or schedule.');
+        const o = await F.readObject(ctx.client, args.kind, args.id);
+        if (!o) throw new SfsError(`No ${args.kind} with that ID.`, { code: 'not_found' });
+        return { kind: args.kind, inLedger: isRecorded(args.kind, args.id, ctx.env), object: o };
+      },
+    },
     counts: {
       summary: 'Count templates, connectors, connections, instances and schedules (before and after a test)',
       run: async (ctx) => ({ tenant: await ctx.tenantSummary(), counts: await F.counts(ctx.client) }),

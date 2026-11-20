@@ -43,6 +43,7 @@ The `detection*` functions take any detection record, not only `inputs`: `detect
 | `toString('x')` | `"\"x\""` (adds quotes) | use `string()` for strings |
 | `isIP('2001:db8::1')` | true, although the docs say IPv4 | add `!ip.contains(':')` for IPv4 only |
 | `isPrivateIP` | true for RFC 1918, loopback, link-local IPv4 | |
+| `isCaseClosed(inputs)` | false for every synthetic closed case tried (status name closed, closedAt set) | use `casePrimaryStatusName(inputs) == 'closed'` |
 | `list.slice(a, b)` past the end | error | `size(l) > n ? l.slice(0, n) : l` |
 | `1/0` | error "division by zero" | |
 | `size(list[?5])` | error: optional has no size | `.orValue(...)` first |
