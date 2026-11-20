@@ -256,4 +256,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go through GitHub priva
 
 For a release, bump the version in `lib/constants.mjs`, `package.json`, and every manifest. Then `tools/check-manifests.mjs` passes, the changelog gets an entry, and the tag is `v<version>`.
 
-Sophos, Sophos Central, and Sophos Fusion are trademarks of Sophos Ltd. The project is MIT licensed; see [LICENSE](LICENSE). The bundled yaml parser is ISC licensed.
+Sophos and Sophos Fusion are trademarks of Sophos Ltd. The project is MIT licensed; see [LICENSE](LICENSE). The bundled yaml parser is ISC licensed.
