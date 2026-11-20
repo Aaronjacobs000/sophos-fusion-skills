@@ -113,14 +113,17 @@ credentials, so you can check a change before importing a new version.`,
         const conn = await F.getConnection(ctx.client, args.connection);
         if (!conn) throw new SfsError('No connection with that ID.', { code: 'not_found' });
         const c = await F.getConnector(ctx.client, { id: conn.connector.id });
+        const actionInputs = readJsonArg(args.inputs, '--inputs') || {};
+        const leaks = findLeaks(actionInputs);
+        if (leaks.length) throw new UsageError(`The inputs hold secret-looking values (${leaks.map((l) => l.path).join(', ')}). Keep secrets in the connection.`);
         const input = {
           connection: { connectionId: conn.id, name: conn.name, authType: conn.authType },
           connectionMethodName: value.method || 'http',
           // Fusion wants the full Connector.action name here
           action: { name: `${c?.name ?? conn.connector.name}.${action.name}`, description: action.description, inputs: action.inputs, outputs: action.outputs, config: action.config },
-          inputs: readJsonArg(args.inputs, '--inputs') || {},
+          inputs: actionInputs,
         };
-        const result = await F.verifyConnectorAction(ctx.client, c.id, input);
+        const result = await F.verifyConnectorAction(ctx.client, conn.connector.id, input);
         return { connector: c?.name ?? conn.connector?.name, connection: conn.name, action: action.name, result };
       },
     },

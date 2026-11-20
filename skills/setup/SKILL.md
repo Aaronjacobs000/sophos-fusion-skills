@@ -51,7 +51,7 @@ node ${CLAUDE_SKILL_DIR}/scripts/profile.mjs tenants --profile mssp --search acm
 node ${CLAUDE_SKILL_DIR}/scripts/profile.mjs add --name mssp --tenant <tenant-uuid>
 ```
 
-Any script also takes `--tenant <uuid>` for one command. The scripts check the tenant is one the credential can see, and route by the region Sophos reports for it.
+Any script also takes `--tenant <uuid>` for one command. The scripts check the tenant is one the credential can see, and route by the region Sophos reports for it. A write to a tenant other than the profile's saved one always needs `--production`, because the profile's test marking applies to its own tenant only.
 
 ## The self-test
 

@@ -39,3 +39,5 @@ A task with `nolog: true` has no values in its entry. Everything else stays in t
 ## A run started by the API
 
 `executePlaybookInstanceV2` takes the instance ID, `parameters` (they override the instance inputs, and are evaluated as templates), `targetResource` (required; an empty string works), and an optional `reason`. It returns the execution at once with state Started. Poll `playbookExecution` until a final state.
+
+Reading a run with its task events sometimes answers as if the run did not exist, while the same run reads fine without them (seen 21/11/2026 on runs started with parameters). `run.mjs show` and `diagnose` then read it without events and say so in `eventsError`.

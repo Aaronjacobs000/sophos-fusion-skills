@@ -18,6 +18,14 @@ import { loadYaml } from '../../../lib/yamlx.mjs';
 import { checkField } from '../../../lib/cel.mjs';
 import { TENANT_FIELDS, TEST_DISPLAY_PREFIX, TEST_PREFIX } from '../../../lib/constants.mjs';
 import { log } from '../../../lib/log.mjs';
+import { addSecret, findLeaks } from '../../../lib/redact.mjs';
+
+/** Instance and schedule inputs end up in execution logs: refuse secret-looking values. */
+function checkedInputs(value, label) {
+  const leaks = findLeaks(value);
+  if (leaks.length) throw new UsageError(`${label} holds secret-looking values (${leaks.map((l) => l.path).join(', ')}). Keep secrets in connections; Fusion logs inputs.`);
+  return value;
+}
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)/;
 
@@ -75,32 +83,53 @@ async function recordCreated(ctx, kind, obj, parentId = null) {
   return record({ kind, id: obj.id, name: obj.name, tenantId: target.tenantId, profile: ctx.profile.name, parentId }, { runId: ctx.args['run-id'], env: ctx.env });
 }
 
-/** After a write that may or may not have happened, look for the object by name. */
-async function findAfterUnconfirmed(ctx, kind, name) {
-  const finder = {
-    playbook: async () => F.findPlaybookByName(ctx.client, name),
-    connector: async () => F.getConnector(ctx.client, { name }),
-    connection: async () => (await F.listConnections(ctx.client)).find((c) => c.name === name),
-    instance: async () => (await F.listInstances(ctx.client)).find((i) => i.name === name),
-    schedule: async () => (await F.listSchedules(ctx.client)).find((s) => s.name === name),
-  }[kind];
-  const r = await F.pollUntil(finder);
+/** Objects of a kind with this name, as they are now. */
+async function findByName(ctx, kind, name) {
+  switch (kind) {
+    case 'playbook':
+      return (await F.listPlaybooks(ctx.client)).filter((p) => p.name === name);
+    case 'connector':
+      return (await F.listConnectors(ctx.client)).filter((c) => c.name === name);
+    case 'connection':
+      return (await F.listConnections(ctx.client)).filter((c) => c.name === name);
+    case 'instance':
+      return (await F.listInstances(ctx.client)).filter((i) => i.name === name);
+    case 'schedule':
+      return (await F.listSchedules(ctx.client)).filter((x) => x.name === name);
+    default:
+      return [];
+  }
+}
+
+/**
+ * After a create that may or may not have happened, look for an object with
+ * the name that was not there before the create. An object that already
+ * existed is never adopted into the ledger.
+ */
+async function findAfterUnconfirmed(ctx, kind, name, before) {
+  const r = await F.pollUntil(async () => (await findByName(ctx, kind, name)).find((o) => !before.has(o.id)) ?? null);
   return r.ok ? r.value : null;
 }
 
 async function createWithLedger(ctx, kind, name, create, parentId = null) {
+  const before = new Set((await findByName(ctx, kind, name)).map((o) => o.id));
   let obj;
   try {
     obj = await create();
   } catch (error) {
     if (!(error instanceof MutationUnconfirmedError)) throw error;
-    log(`The create may or may not have happened (${error.failure}). Looking for ${name} on the tenant.`);
-    const found = await findAfterUnconfirmed(ctx, kind, name);
+    log(`The create may or may not have happened (${error.failure}). Looking for a new ${kind} named ${name}.`);
+    const found = await findAfterUnconfirmed(ctx, kind, name, before);
     if (!found) throw error;
     const entry = await recordCreated(ctx, kind, found, parentId);
     return { obj: found, entry, note: 'The create answered with an error, but the object exists, so it was recorded in the ledger.' };
   }
   if (!obj?.id) throw new SfsError(`Fusion answered the ${kind} create without an ID. Nothing was recorded; check the tenant by name (${name}).`, { code: 'no_id' });
+  if (before.has(obj.id)) {
+    // The create landed on an object that was already there (an import that added a version)
+    const known = isRecorded(kind, obj.id, ctx.env);
+    return { obj, entry: null, note: `That ${kind} already existed, so no new ledger entry was made${known ? ' (it is already in the ledger)' : ', and rollback will not remove it'}.` };
+  }
   const entry = await recordCreated(ctx, kind, obj, parentId);
   return { obj, entry };
 }
@@ -272,6 +301,7 @@ const spec = {
         prefix: { type: 'string', default: TEST_PREFIX, help: 'Test copy prefix' },
         'connector-map': { type: 'string', multiple: true, help: 'Original=Replacement connector name in a template (repeatable). Test copies map custom connectors to their ZZTest_ copies when those exist' },
         'save-copy': { type: 'string', help: 'Also write the exact text that was imported to this file' },
+        ...OWN,
       },
       gateDescription: (args, [file]) => `importing ${file}${args['as-is'] ? ' under its real name' : ' as a test copy'}`,
       run: async (ctx, args, [file]) => {
@@ -285,6 +315,9 @@ const spec = {
         let body = text;
         let name = value.name;
         let changes = [];
+        if (!args['as-is'] && !/^ZZ[A-Za-z0-9]*_$/.test(args.prefix)) {
+          throw new UsageError('--prefix must start with ZZ and end with an underscore (default ZZTest_), so test copies stay easy to find and remove. Use --as-is for a real-name import.');
+        }
         if (!args['as-is']) {
           const map = parseMap(args['connector-map']);
           if (kind === 'playbook') {
@@ -303,6 +336,10 @@ const spec = {
         if (existing && compareSemver(value.version, existing.head?.version) <= 0) {
           throw new SfsError(`${name} is already on the tenant at version ${existing.head?.version}. Bump the version in the file, or remove the old copy first.`, { code: 'duplicate' });
         }
+        // Adding a version to an object these scripts did not create changes it, and no rollback can take a published version back.
+        if (existing && !isRecorded(kind, existing.id, ctx.env) && !args['allow-existing']) {
+          throw new UsageError(`${name} already exists on the tenant (version ${existing.head?.version}) and these scripts did not create it. Importing adds version ${value.version} to it, which rollback cannot undo. Only with the user's approval for that object by name, add --allow-existing.`);
+        }
         if (args['save-copy']) fs.writeFileSync(args['save-copy'], body);
         const created = await createWithLedger(ctx, kind, name, () => (kind === 'playbook' ? F.importPlaybook(ctx.client, body, path.basename(file)) : F.importConnector(ctx.client, body, path.basename(file))));
         const id = created.obj.id;
@@ -313,8 +350,8 @@ const spec = {
           imported: { kind, id, name, version: created.obj.head?.version, headVersionId: created.obj.head?.id, published: Boolean(created.obj.head?.published) },
           testCopy: !args['as-is'],
           changes,
-          ledger: { runId: created.entry.runId, seq: created.entry.seq },
-          readBack: back.ok ? { found: true, waitedMs: back.waitedMs } : { found: false, note: 'The import returned an ID but the object did not read back within 30 s. It is in the ledger; check again before retrying.' },
+          ledger: created.entry ? { runId: created.entry.runId, seq: created.entry.seq } : null,
+          readBack: back.ok ? { found: true, waitedMs: back.waitedMs } : { found: false, note: 'The import returned an ID but the object did not read back in time. Check again before retrying.' },
           diff,
           ...(created.note ? { note: created.note } : {}),
           next: kind === 'playbook' ? `Create a disabled instance: deploy.mjs instance-create --template ${name} --name "${TEST_DISPLAY_PREFIX}..." --trigger <type> --yes` : `Create a connection: deploy.mjs connection-create --connector ${name} --name "${TEST_DISPLAY_PREFIX}..." --auth-type <type> --yes`,
@@ -361,6 +398,7 @@ const spec = {
         for (const pair of splitList(args['credentials-env'])) {
           const [k, envName] = pair.split('=');
           if (!k || !envName || !ctx.env[envName]) throw new UsageError(`--credentials-env ${pair}: give key=ENV_VAR with the variable set.`);
+          addSecret(ctx.env[envName]);
           credentials[k] = ctx.env[envName];
         }
         const input = {
@@ -373,7 +411,7 @@ const spec = {
         };
         const created = await createWithLedger(ctx, 'connection', name, () => F.createConnection(ctx.client, c.id, input), c.id);
         const back = await readBack(ctx, 'connection', created.obj.id, (o) => o.name === name);
-        return { ok: back.ok, connection: { id: created.obj.id, name, connector: c.name, authType: input.authType }, ledger: { runId: created.entry.runId, seq: created.entry.seq }, readBack: { found: back.ok, waitedMs: back.waitedMs } };
+        return { ok: back.ok, connection: { id: created.obj.id, name, connector: c.name, authType: input.authType }, ledger: created.entry ? { runId: created.entry.runId, seq: created.entry.seq } : null, readBack: { found: back.ok, waitedMs: back.waitedMs } };
       },
     },
     'instance-create': {
@@ -431,7 +469,7 @@ const spec = {
           version: version.id,
           enabled: false,
           trigger: { name, typeId: triggerTypeId(types, args.trigger), config: buildTriggerConfig(args) },
-          inputs: readJsonArg(args.inputs, '--inputs') || {},
+          inputs: checkedInputs(readJsonArg(args.inputs, '--inputs') || {}, '--inputs'),
           connections,
           ...(args.interfaces ? { interfaces: readJsonArg(args.interfaces, '--interfaces') } : {}),
         };
@@ -441,7 +479,7 @@ const spec = {
         return {
           ok: back.ok && readEnabled === false,
           instance: { id: created.obj.id, name, template: pb.name, version: version.version, enabled: readEnabled, trigger: args.trigger, connections: picked.length ? picked : connections },
-          ledger: { runId: created.entry.runId, seq: created.entry.seq },
+          ledger: created.entry ? { runId: created.entry.runId, seq: created.entry.seq } : null,
           readBack: { found: back.ok, enabled: readEnabled, waitedMs: back.waitedMs },
           next: args.trigger === 'generic' ? `Run it: run.mjs execute --instance ${created.obj.id} --yes` : 'Enable it only when the user approves: deploy.mjs enable --instance <id> --yes',
         };
@@ -458,7 +496,9 @@ const spec = {
         if (!r.ok) throw new UsageError(`--filter does not parse as CEL: ${r.error.message}`);
         const inst = await F.getInstance(ctx.client, args.instance);
         if (!inst) throw new SfsError('No such instance.', { code: 'not_found' });
-        const config = { ...(inst.trigger?.config || {}), filter: { value: args.filter } };
+        if (!inst.trigger?.type?.id) throw new SfsError('That instance has no trigger to filter.', { code: 'no_trigger' });
+        if (inst.trigger.type.name === 'generic') throw new UsageError('Generic Trigger instances have no filter; they run when started.');
+        const config = { ...(inst.trigger.config || {}), filter: { value: args.filter } };
         await F.updateInstance(ctx.client, { playbookInstanceId: inst.id, trigger: { name: inst.trigger.name, typeId: inst.trigger.type.id, config } });
         const back = await readBack(ctx, 'instance', inst.id, (o) => o.trigger?.config?.filter?.value === args.filter);
         return { ok: back.ok, instance: inst.id, filter: args.filter, readBack: { matches: back.ok, waitedMs: back.waitedMs } };
@@ -488,10 +528,11 @@ const spec = {
         if (!inst.enabled) {
           return { ok: false, error: { code: 'instance_disabled', message: `Fusion only schedules an enabled instance (PB12). Enable it first with deploy.mjs enable --instance ${inst.id} --yes (its own approval). The schedule is created paused, so it will not run until someone resumes it.` } };
         }
-        const input = { name, playbookInstance: args.instance, cron: args.cron.trim(), timeZone: args['time-zone'], paused: !args.start, inputs: readJsonArg(args.inputs, '--inputs') || {}, childType: 'NONE' };
+        if ((await F.listSchedules(ctx.client)).some((x) => x.name === name)) throw new SfsError(`A schedule named "${name}" already exists.`, { code: 'duplicate' });
+        const input = { name, playbookInstance: args.instance, cron: args.cron.trim(), timeZone: args['time-zone'], paused: !args.start, inputs: checkedInputs(readJsonArg(args.inputs, '--inputs') || {}, '--inputs'), childType: 'NONE' };
         const created = await createWithLedger(ctx, 'schedule', name, () => F.createSchedule(ctx.client, input), args.instance);
-        const back = await readBack(ctx, 'schedule', created.obj.id);
-        return { ok: back.ok, schedule: { id: created.obj.id, name, cron: input.cron, timeZone: input.timeZone, paused: back.value?.paused, nextRun: back.value?.nextRun }, ledger: { runId: created.entry.runId, seq: created.entry.seq } };
+        const back = await readBack(ctx, 'schedule', created.obj.id, (o) => o.paused === input.paused);
+        return { ok: back.ok, schedule: { id: created.obj.id, name, cron: input.cron, timeZone: input.timeZone, paused: back.value?.paused ?? null, nextRun: back.value?.nextRun ?? null }, ledger: created.entry ? { runId: created.entry.runId, seq: created.entry.seq } : null, readBack: { matches: back.ok } };
       },
     },
     enable: {

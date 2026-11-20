@@ -50,7 +50,7 @@ node $D/deploy.mjs schedule-create --instance <id> --name "ZZ Test weekly" --cro
 node $D/deploy.mjs connection-create --connector <name> --name "ZZ Test <name>" --auth-type None --yes
 ```
 
-Schedules are created paused. `--start` creates one running; that is a separate approval.
+Schedules are created paused. `--start` creates one running; that is a separate approval. Fusion only schedules an enabled Generic Trigger instance, so enable it first (its own approval); a paused schedule still never runs.
 
 ## Enable and publish are their own steps
 
@@ -65,6 +65,10 @@ An enabled instance runs whenever its trigger fires. Ask separately, and say wha
 ## Changing objects that already existed
 
 The scripts change and delete only objects in the ledger. To change something that was on the tenant before (an instance the person built in the console), the person must ask for that object by name; then add `--allow-existing`.
+
+Importing a file whose name is already on the tenant, at a lower version, adds a version to that object. If the scripts did not create it, the import refuses unless `--allow-existing` is given, and the object is never put in the ledger: a published version cannot be taken back, so rollback will not try.
+
+Using `--tenant` for a tenant other than the one saved on the profile makes every write need `--production` as well, whatever the profile's kind.
 
 ## Real deployments
 

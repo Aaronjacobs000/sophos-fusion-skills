@@ -67,6 +67,16 @@ export function createFetch(rules, onCall = () => {}) {
       throw e;
     }
     if (step.throws === 'network') throw new TypeError('fetch failed');
+    if (step.bodyError || step.bodyStall) {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"data":'));
+          if (step.bodyError) controller.error(new TypeError('terminated'));
+          if (step.bodyStall && init.signal) init.signal.addEventListener('abort', () => controller.error(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'content-type': 'application/json' } });
+    }
     return makeResponse(step.respond ?? step);
   };
   return { fetch: fetchImpl, calls };

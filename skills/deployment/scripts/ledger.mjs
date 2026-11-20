@@ -7,6 +7,7 @@ import { SfsError, UsageError } from '../../../lib/errors.mjs';
 import { ledgerPath, liveObjects, markObject, readLedger, rollbackOrder, startRun } from '../../../lib/ledger.mjs';
 import * as F from '../../../lib/fusion.mjs';
 import { log } from '../../../lib/log.mjs';
+import { redactText } from '../../../lib/redact.mjs';
 
 function pickRun(ledger, runId) {
   const id = runId || ledger.currentRun;
@@ -86,7 +87,7 @@ const spec = {
             results.push({ seq: o.seq, kind: o.kind, name: o.name, result: gone.ok ? 'deleted' : 'still there', waitedMs: gone.waitedMs });
             log(`${gone.ok ? 'deleted' : 'NOT deleted'}: ${o.kind} ${o.name}`);
           } catch (error) {
-            markObject(run.id, o.seq, 'delete_failed', error.message.slice(0, 200), ctx.env);
+            markObject(run.id, o.seq, 'delete_failed', redactText(error.message).slice(0, 200), ctx.env);
             results.push({ seq: o.seq, kind: o.kind, name: o.name, result: 'error', error: error.message });
           }
         }

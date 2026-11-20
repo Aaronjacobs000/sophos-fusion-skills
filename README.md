@@ -157,10 +157,10 @@ The safety rules live in the scripts, so they hold whichever assistant runs them
 
 - Reads by default. Lookups, validation, CEL cases, lists, exports, logs, and diagnosis never change anything.
 - Every write needs `--yes`. That covers imports, connections, instances, filters, schedules, enable, publish, delete, rollback, runs, and connector tests. Without the flag, the script sends nothing and exits with code 3. The skills tell the agent to describe each write and get your approval for that one write first.
-- Production needs `--production` too. On a production profile, the agent names the tenant before it asks.
+- Production needs `--production` too. On a production profile, the agent names the tenant before it asks. A `--tenant` other than the profile's saved tenant counts as production.
 - Test copies. Imports become `ZZTest_<name>` with a `ZZ Test` title unless you ask for a real deployment.
 - Disabled instances. New instances start disabled, and new schedules start paused. Enabling is a separate step that needs its own approval.
-- A ledger and rollback. Every created object is recorded the moment Fusion returns its ID. `ledger.mjs rollback` deletes a run's objects newest first, children before parents, and reads each delete back. It only touches objects in the ledger.
+- A ledger and rollback. Every created object is recorded the moment Fusion returns its ID. `ledger.mjs rollback` deletes a run's objects newest first, children before parents, and reads each delete back. It only touches objects in the ledger. Objects that were already on the tenant are never recorded, and changing one needs `--allow-existing`.
 - Read-back. A success answer is not taken as proof. Every write is read back, and imports are exported and diffed against your file.
 - No repeated writes. A write that gets a 5xx, times out, or drops its connection is never sent again, because it may have worked. The script looks for the object instead. Reads retry on 429 and 5xx, and honor Retry-After (seconds or an HTTP date, up to 60 s).
 - Only Sophos hosts. Requests go only to `id.sophos.com`, `api.central.sophos.com`, regional `api-<region>.central.sophos.com`, and `api.taegis.sophos.com`. Redirects are refused, and hosts named in Sophos's answers are checked before a token goes there.

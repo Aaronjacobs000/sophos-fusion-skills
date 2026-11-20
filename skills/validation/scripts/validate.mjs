@@ -12,6 +12,7 @@ import { tenantValidate } from '../../../lib/tenant-check.mjs';
 import { loadCases, offlineCheck, runCases, truthTable } from '../../../lib/cel-cases.mjs';
 import { getConnector, validateConnectionInput } from '../../../lib/fusion.mjs';
 import { log } from '../../../lib/log.mjs';
+import { addSecret } from '../../../lib/redact.mjs';
 
 function readJsonArg(value, label) {
   if (value === undefined) return undefined;
@@ -86,7 +87,7 @@ const spec = {
         }
         const rows = await runCases(ctx.client, cases);
         const table = truthTable(rows);
-        process.stderr.write(`${table}\n`);
+        log(table);
         const failed = rows.filter((r) => r.result !== 'PASS');
         return { ok: failed.length === 0, file, mode: 'tenant', tenant: await ctx.tenantSummary(), passed: rows.length - failed.length, failed: failed.length, rows, table: table.split('\n') };
       },
@@ -108,6 +109,7 @@ const spec = {
         for (const pair of splitList(args['credentials-env'])) {
           const [k, envName] = pair.split('=');
           if (!k || !envName || !ctx.env[envName]) throw new UsageError(`--credentials-env ${pair}: give key=ENV_VAR with the variable set.`);
+          addSecret(ctx.env[envName]);
           credentials[k] = ctx.env[envName];
         }
         const connection = {

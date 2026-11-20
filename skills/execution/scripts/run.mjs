@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import { main } from '../../../lib/cli.mjs';
-import { SfsError, UsageError, GraphQLError } from '../../../lib/errors.mjs';
+import { SfsError, UsageError, GraphQLError, MutationUnconfirmedError } from '../../../lib/errors.mjs';
 import * as F from '../../../lib/fusion.mjs';
 import { findLeaks } from '../../../lib/redact.mjs';
 import { diagnose, logTask, templateMarkers, REAUTH_HELP } from '../../../lib/diagnose.mjs';
@@ -23,6 +23,12 @@ function readJsonArg(value, label) {
   } catch (error) {
     throw new UsageError(`${label} is not valid JSON: ${error.message}`);
   }
+}
+
+function seconds(value, label, { min = 1, max = 3600 } = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < min || n > max) throw new UsageError(`${label} must be a number of seconds from ${min} to ${max}.`);
+  return n;
 }
 
 async function watch(client, id, { timeoutSec = 300, intervalSec = 5 } = {}) {
@@ -70,6 +76,7 @@ const spec = {
         }
         const leaks = findLeaks(parameters);
         if (leaks.length) throw new UsageError(`The parameters hold secret-looking values (${leaks.map((l) => l.path).join(', ')}). Fusion would keep them in the execution log permanently. Remove them.`);
+        if (args.watch) seconds(args.timeout, '--timeout');
         let execution;
         try {
           execution = await F.executeInstance(ctx.client, { playbookInstanceId: inst.id, parameters, targetResource: args['target-resource'], ...(args.reason ? { reason: args.reason } : {}) });
@@ -77,12 +84,18 @@ const spec = {
           if (error instanceof GraphQLError && /REAUTH/i.test(error.message)) {
             return { ok: false, instance: inst.id, error: { code: 'reauth_required', message: REAUTH_HELP } };
           }
+          if (error instanceof MutationUnconfirmedError) {
+            throw new SfsError(`${error.message} A run may have started. Check run.mjs list --instance ${inst.id} before starting another.`, { code: 'write_unconfirmed' });
+          }
           throw error;
+        }
+        if (!execution?.id) {
+          throw new SfsError(`Fusion answered the run request without an execution ID. A run may have started: check run.mjs list --instance ${inst.id} before starting another.`, { code: 'write_unconfirmed' });
         }
         log(`Started execution ${execution.id} (${execution.state}).`);
         const result = { instance: { id: inst.id, name: inst.name, enabled: inst.enabled }, execution: { id: execution.id, state: execution.state } };
         if (!args.watch) return { ...result, next: `run.mjs watch --execution ${execution.id}` };
-        const w = await watch(ctx.client, execution.id, { timeoutSec: Number(args.timeout) });
+        const w = await watch(ctx.client, execution.id, { timeoutSec: seconds(args.timeout, '--timeout') });
         return { ...result, ok: w.done, finished: w.done, execution: w.execution, next: `run.mjs logs --execution ${execution.id}` };
       },
     },
@@ -94,7 +107,7 @@ const spec = {
         interval: { type: 'string', default: '5', help: 'Seconds between polls (default 5)' },
       },
       run: async (ctx, args) => {
-        const w = await watch(ctx.client, args.execution, { timeoutSec: Number(args.timeout), intervalSec: Number(args.interval) });
+        const w = await watch(ctx.client, args.execution, { timeoutSec: seconds(args.timeout, '--timeout'), intervalSec: seconds(args.interval, '--interval', { min: 1, max: 300 }) });
         return { ok: w.done, finished: w.done, execution: w.execution };
       },
     },
