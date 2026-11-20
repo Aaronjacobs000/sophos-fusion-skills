@@ -4,7 +4,7 @@
 // templates to learn from. Nothing here writes.
 
 import fs from 'node:fs';
-import { main } from '../../../lib/cli.mjs';
+import { intArg, main } from '../../../lib/cli.mjs';
 import { UsageError } from '../../../lib/errors.mjs';
 import * as F from '../../../lib/fusion.mjs';
 import { loadYaml } from '../../../lib/yamlx.mjs';
@@ -87,7 +87,7 @@ const spec = {
       },
       run: async (ctx, args) => {
         if (args.search) {
-          const r = await F.searchConnectors(ctx.client, args.search, Number(args.limit || 15));
+          const r = await F.searchConnectors(ctx.client, args.search, intArg(args.limit ?? 15, '--limit'));
           return { search: args.search, results: r.results.map((x) => ({ name: x.connector.name, score: Number(x.score.toFixed(3)), version: x.connector.head?.version, title: x.connector.head?.title, vendor: x.connector.head?.vendorName, custom: !x.connector.isGlobal })) };
         }
         let list = await F.listConnectors(ctx.client);

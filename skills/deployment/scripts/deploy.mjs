@@ -111,8 +111,12 @@ async function findAfterUnconfirmed(ctx, kind, name, before) {
   return r.ok ? r.value : null;
 }
 
-async function createWithLedger(ctx, kind, name, create, parentId = null) {
-  const before = new Set((await findByName(ctx, kind, name)).map((o) => o.id));
+/**
+ * existingIds: objects already found by another read (an import's duplicate
+ * check uses a different query than the list), so they are never recorded.
+ */
+async function createWithLedger(ctx, kind, name, create, parentId = null, existingIds = []) {
+  const before = new Set([...(await findByName(ctx, kind, name)).map((o) => o.id), ...existingIds.filter(Boolean)]);
   let obj;
   try {
     obj = await create();
@@ -142,11 +146,11 @@ async function readBack(ctx, kind, id, expect = () => true) {
   return r;
 }
 
-async function exportAndDiff(ctx, kind, name, localText) {
+async function exportAndDiff(ctx, kind, name, localText, prefix = TEST_PREFIX) {
   const exported = kind === 'playbook' ? await F.exportPlaybook(ctx.client, { name }) : await F.exportConnector(ctx.client, { name });
   const remote = loadYaml(exported).value;
   const local = loadYaml(localText).value;
-  const differences = diffValues(normalizeForDiff(local), normalizeForDiff(remote));
+  const differences = diffValues(normalizeForDiff(local, { prefix }), normalizeForDiff(remote, { prefix }));
   return { matches: differences.length === 0, ignored: TENANT_FIELDS, differences };
 }
 
@@ -341,10 +345,10 @@ const spec = {
           throw new UsageError(`${name} already exists on the tenant (version ${existing.head?.version}) and these scripts did not create it. Importing adds version ${value.version} to it, which rollback cannot undo. Only with the user's approval for that object by name, add --allow-existing.`);
         }
         if (args['save-copy']) fs.writeFileSync(args['save-copy'], body);
-        const created = await createWithLedger(ctx, kind, name, () => (kind === 'playbook' ? F.importPlaybook(ctx.client, body, path.basename(file)) : F.importConnector(ctx.client, body, path.basename(file))));
+        const created = await createWithLedger(ctx, kind, name, () => (kind === 'playbook' ? F.importPlaybook(ctx.client, body, path.basename(file)) : F.importConnector(ctx.client, body, path.basename(file))), null, [existing?.id]);
         const id = created.obj.id;
         const back = await readBack(ctx, kind, id, (o) => o.name === name && o.head?.version === String(value.version));
-        const diff = back.ok ? await exportAndDiff(ctx, kind, name, body) : null;
+        const diff = back.ok ? await exportAndDiff(ctx, kind, name, body, args.prefix) : null;
         return {
           ok: back.ok,
           imported: { kind, id, name, version: created.obj.head?.version, headVersionId: created.obj.head?.id, published: Boolean(created.obj.head?.published) },
@@ -372,7 +376,7 @@ const spec = {
         const { value } = parseOrThrow(text, file);
         const name = args.name || (args['as-is'] ? value.name : testName(value.name, args.prefix));
         const kind = value.kind === 'Playbook' ? 'playbook' : 'connector';
-        return { file, name, ...(await exportAndDiff(ctx, kind, name, text)) };
+        return { file, name, ...(await exportAndDiff(ctx, kind, name, text, args.prefix)) };
       },
     },
     'connection-create': {

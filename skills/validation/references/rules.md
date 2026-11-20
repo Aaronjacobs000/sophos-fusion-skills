@@ -74,7 +74,7 @@ A read counts as guarded when the same expression has `has(task, ...)` or an opt
 | `secret.nolog` | error | a step that sends or reads a password, token, key, webhook, or signature has no `nolog: true` |
 | `response.dry-run` | error | a response playbook without a boolean `dry_run` input defaulting to true |
 | `response.cap` | error | no integer `max_` input with a default, or nothing reads it |
-| `response.gate` | error | a changing action whose condition does not check `dry_run` |
+| `response.gate` | error | a changing action whose condition (or an enclosing block's) does not skip it when `dry_run` is on: one `&&` term must be `!...dry_run`, `...dry_run == false`, or `...dry_run != true` |
 | `data.hardcoded-secret` | error (warning in documentation) | a token, key pair, private key, or webhook URL in the file |
 | `data.personal` | error (warning in documentation) | an email address outside example domains |
 | `data.tenant-id` | error | an exported `tenantId`, or a fixed tenant ID in a tenant input |

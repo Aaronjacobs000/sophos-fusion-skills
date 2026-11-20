@@ -7,7 +7,7 @@
 // the same template.
 
 import fs from 'node:fs';
-import { main } from '../../../lib/cli.mjs';
+import { intArg, main } from '../../../lib/cli.mjs';
 import { SfsError, UsageError, GraphQLError, MutationUnconfirmedError } from '../../../lib/errors.mjs';
 import * as F from '../../../lib/fusion.mjs';
 import { findLeaks } from '../../../lib/redact.mjs';
@@ -139,7 +139,7 @@ const spec = {
         first: { type: 'string', default: '20', help: 'How many (default 20)' },
       },
       run: async (ctx, args) => {
-        const r = await F.listExecutions(ctx.client, { instanceId: args.instance, first: Number(args.first) });
+        const r = await F.listExecutions(ctx.client, { instanceId: args.instance, first: intArg(args.first, '--first') });
         return { total: r.totalCount, executions: r.playbookExecutions };
       },
     },
