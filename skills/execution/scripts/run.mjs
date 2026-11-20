@@ -67,7 +67,7 @@ const spec = {
           return { ok: false, instance: inst.id, trigger: type, error: { code: 'not_generic', message: `This instance's trigger is ${type === 'actions' ? 'User Initiated' : type}. ${REAUTH_HELP}` } };
         }
         if (!inst.enabled) {
-          return { ok: false, instance: inst.id, enabled: false, error: { code: 'instance_disabled', message: `Fusion will not run a disabled instance (PB12). Instances are created disabled. A Generic Trigger instance runs only when someone starts it or a schedule fires, so enabling it is low risk: ask the user, then run deploy.mjs enable --instance ${inst.id} --yes, and disable it again afterwards.` } };
+          return { ok: false, instance: inst.id, enabled: false, error: { code: 'instance_disabled', message: `Fusion will not run a disabled instance (PB12). Instances are created disabled. A Generic Trigger instance runs only when someone starts it or a schedule fires, so enabling it is low risk: ask the user, then run deploy.mjs enable --instance ${inst.id} --yes, and disable it again afterward.` } };
         }
         const parameters = { ...(readJsonArg(args.params, '--params') || {}), ...(readJsonArg(args.event, '--event') || {}) };
         const markers = templateMarkers(parameters);
@@ -156,7 +156,7 @@ const spec = {
     cancel: {
       summary: 'Cancel a run that is still going',
       write: true,
-      options: { execution: { type: 'string', required: true, help: 'Execution ID' }, reason: { type: 'string', default: 'Cancelled from the execution skill', help: 'Reason' } },
+      options: { execution: { type: 'string', required: true, help: 'Execution ID' }, reason: { type: 'string', default: 'Canceled from the execution skill', help: 'Reason' } },
       gateDescription: (args) => `cancelling execution ${args.execution}`,
       run: async (ctx, args) => {
         const r = await F.cancelExecutions(ctx.client, [args.execution], args.reason);

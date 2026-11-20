@@ -30,7 +30,7 @@ function promptHidden(question) {
         resolve(value);
       } else if (ch === '\u0003') {
         stdin.setRawMode(false);
-        reject(new UsageError('Cancelled.'));
+        reject(new UsageError('Canceled.'));
       } else if (ch === '\u007f' || ch === '\b') {
         value = value.slice(0, -1);
       } else {
