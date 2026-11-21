@@ -102,6 +102,12 @@ describe('the client ID in logs', () => {
     assert.deepEqual(redact({ createdById: '11111111-aaaa-4bbb-8ccc-222222222222' }), { createdById: '[client ID]' });
   });
 
+  test('a shorter secret inside the client ID cannot leave part of it showing', () => {
+    addSecret('4bbb-8ccc');
+    addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
+    assert.equal(redactText('by 11111111-aaaa-4bbb-8ccc-222222222222, then 4bbb-8ccc'), 'by [client ID], then [redacted]');
+  });
+
   test('is an identifier even when another path also registered it as a secret', () => {
     addSecret('11111111-aaaa-4bbb-8ccc-222222222222');
     addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
