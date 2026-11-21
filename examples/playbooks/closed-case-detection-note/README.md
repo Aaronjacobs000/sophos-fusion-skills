@@ -34,7 +34,8 @@ The step `count_detections` asks the case for `detectionsEvidenceCount` (only th
 
 - Offline and tenant DSL checks pass.
 - 15 CEL cases pass in Fusion's engine against `sample-event.json`, a made-up case event shaped from the platform's CaseEvent schema.
-- Not run live: a live run would comment on a real case. The filter and payload were tested with synthetic events only, so check the first real close on a test case before relying on it.
+- Run live on 21/11/2026 on a test tenant, as a `ZZTest_` copy on a platform instance whose filter also named one test case. Reopening the case started no run. Closing it as Threat Mitigated started one run within a second. The run ended Completed with outcome SUCCESS and added one comment, `Automated note: <case ID> closed as Threat Mitigated with 0 detections.` The case had no detection evidence, and the count came from the case lookup.
+- The execution log keeps the trigger event, and the event names whoever changed the case. In the test that was the API credential the scripts use, so `run.mjs diagnose` flagged its client ID as secret-looking. The secret itself was not in the log.
 
 ## Deploy
 

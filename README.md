@@ -185,7 +185,7 @@ Read these before you rely on the skills.
 - Execution logs keep request and response bodies, permanently. Deleting the instance or template leaves the logs, and the API can't delete them. Any step that carries a secret needs `nolog: true`. Never put secrets or personal data in run parameters.
 - The automation API isn't in Sophos's public developer docs. The scripts call Sophos Fusion's GraphQL automation API, which can change without notice. Platform facts in the references were measured on 21/11/2026.
 - Fusion's own validator misses things. It only warns about syntax errors and undeclared references, and it lets through unknown action names, reads of skipped tasks, and reads of later tasks. The offline rules and the tenant check catch these, but not every runtime failure.
-- Case event payloads were tested with synthetic events. No real case was changed during testing. Check the first real event on a test case.
+- Case Update is the only platform event tested live. Closing a test case ran the notify example once and added one comment. Test any other event on a test case before you rely on it.
 - Only Sophos may set some fields. Templates with `isProactiveResponse: true`, or the MDR and visibility flags, fail to import on a customer tenant. The validator flags them.
 
 ## Run the scripts by hand
@@ -244,7 +244,7 @@ CI runs all three on Node 22 and 24. While the repository is private, it runs on
 - `--roundtrip --yes` adds one import, export and diff, and rollback.
 - `--level full --yes` runs the whole cycle: test-copy imports of all examples, a disabled instance, a lookup-only run with its log and diagnosis, a paused schedule, a disabled platform instance and its filter, the connector tested against a public API, and rollback. Object counts must match before and after.
 
-What has been run so far: the full cycle on an XDR test tenant in eu02, and the read and round-trip levels on an MDR tenant in us01, both on 21/11/2026, with counts unchanged afterward.
+What has been run so far: the full cycle on an XDR test tenant in eu02, and the read and round-trip levels on an MDR tenant in us01, both on 21/11/2026, with counts unchanged afterward. On the XDR tenant, the closed case note example also ran on a real test case: one run, one comment, and the template and instance removed afterward.
 
 ## Troubleshooting
 
