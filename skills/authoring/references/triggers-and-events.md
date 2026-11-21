@@ -65,7 +65,7 @@ Two traps:
 
 ## Case events
 
-The case record carries id, shortId, title, tenantId, type, severity, primaryStatus {id, name, title}, primaryVerdict {id, name, title}, assigneeId, detectionEvidence [{id, isGenesis}], keyFindings, tags, closeReason, closedAt, and `delta` (updatedFields, changes {field: {before, after}}, comment, file, link).
+The case record carries id, shortId, title, tenantId, type, severity, primaryStatus {id, name, title, isClosed}, primaryVerdict {id, name, title}, assigneeId, detectionEvidence [{id, isGenesis}], keyFindings, tags, closeReason, closedAt, createdById, updatedById, contributorIds, and `delta` (updatedFields, changes {field: {before, after}}, comment, file, link). When an API credential made the change, the ID fields hold its client ID.
 
 Read it through the `case*` functions rather than paths: `caseId(inputs)`, `casePrimaryVerdictName(inputs)`, `caseFieldChanged(inputs, 'primaryStatus.id')`, `size(caseDetectionEvidence(inputs))`.
 

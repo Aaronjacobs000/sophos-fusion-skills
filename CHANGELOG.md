@@ -15,6 +15,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - Ctrl-C at that prompt now exits. It used to print "Canceled" and then hang, because the terminal was left reading.
 - `tools/check-manifests.mjs` reads JPEG icon sizes, so a valid square JPEG icon for Claude Code passes. Formats it can't read, such as GIF or WebP, are named in the problem.
 - It also reads an SVG `viewBox` written in single quotes, which it used to report as unreadable.
+- The CEL reference had `isCaseClosed(inputs)` wrong. Measured on a real close event, it reads only `case.primaryStatus.isClosed`, so it is true on real events and false on test events that leave that field out. The example's sample event now carries it.
 
 ## 0.1.0 (2026-11-21)
 
