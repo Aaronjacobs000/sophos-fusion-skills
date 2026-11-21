@@ -11,6 +11,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - The Closed case detection note example ran live on a test case: one run and one comment, with the template and instance removed afterward.
 - `run.mjs logs` and `diagnose` list the API client ID apart, as an identifier, when an event in the log carries it, for example as a case's creator. Output shows it as `[client ID]`. Real secrets are still flagged wherever they sit.
 - `run.mjs diagnose` reads the log of a run whose instance and template were deleted. Fusion answers "record not found" for such a run but keeps its log, and diagnose used to stop at "No execution with that ID", skipping the log and its secret check.
+- `profile.mjs add --prompt` ends at the first line, so a pasted secret that includes the Enter keystroke no longer keeps a trailing return or waits for a second Enter.
 
 ## 0.1.0 (2026-11-21)
 

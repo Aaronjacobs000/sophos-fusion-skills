@@ -5,41 +5,9 @@ import { main } from '../../../lib/cli.mjs';
 import { UsageError, SfsError } from '../../../lib/errors.mjs';
 import { listProfiles, profilesPath, readStore, removeProfile, saveProfile, setDefault, describeProfile, selectProfile } from '../../../lib/profiles.mjs';
 import { isOpReference, resolveSecret } from '../../../lib/secrets.mjs';
+import { promptHidden } from '../../../lib/prompt.mjs';
 import { automationAbilities, counts, permissions, summarizePermissions } from '../../../lib/fusion.mjs';
 import { log } from '../../../lib/log.mjs';
-
-/** Read a line from the terminal without echoing it. */
-function promptHidden(question) {
-  return new Promise((resolve, reject) => {
-    const stdin = process.stdin;
-    if (!stdin.isTTY) {
-      reject(new UsageError('No terminal to prompt on. Use --secret-stdin, --secret-env or an op:// reference.'));
-      return;
-    }
-    process.stderr.write(question);
-    let value = '';
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding('utf8');
-    const onData = (ch) => {
-      if (ch === '\r' || ch === '\n' || ch === '\u0004') {
-        stdin.setRawMode(false);
-        stdin.pause();
-        stdin.off('data', onData);
-        process.stderr.write('\n');
-        resolve(value);
-      } else if (ch === '\u0003') {
-        stdin.setRawMode(false);
-        reject(new UsageError('Canceled.'));
-      } else if (ch === '\u007f' || ch === '\b') {
-        value = value.slice(0, -1);
-      } else {
-        value += ch;
-      }
-    };
-    stdin.on('data', onData);
-  });
-}
 
 async function readStdin() {
   const chunks = [];
