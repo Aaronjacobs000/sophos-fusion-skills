@@ -1,3 +1,11 @@
+<p align="center">
+  <br>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/sophos-logo-white.svg">
+    <img src="assets/sophos-logo.svg" alt="Sophos" width="240">
+  </picture>
+</p>
+
 # Sophos Fusion Skills
 
 [![Version](https://img.shields.io/badge/version-0.1.0-2f6fd6)](CHANGELOG.md)
@@ -149,6 +157,7 @@ examples/                  three playbooks and a connector, each validated and t
 tools/                     manifest check, live smoke test
 test/                      unit tests with a scripted fetch, no credentials
 vendor/yaml/               the yaml parser (ISC), unmodified
+assets/                    the Sophos logo and the plugin icons
 ```
 
 ## Safety model

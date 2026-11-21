@@ -23,6 +23,8 @@
       "Write a Sophos Fusion playbook",
       "Validate this Fusion template",
       "Why did my Fusion playbook run fail?"
-    ]
+    ],
+    "composerIcon": "./assets/sophos-icon-blue-white.svg",
+    "logo": "./assets/sophos-icon-blue-white.svg"
   }
 }

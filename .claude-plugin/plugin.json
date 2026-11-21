@@ -9,5 +9,6 @@
   "homepage": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "repository": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "license": "MIT",
-  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation", "cel", "security-operations"]
+  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation", "cel", "security-operations"],
+  "icon": "./assets/icon.png"
 }

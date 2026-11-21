@@ -61,6 +61,32 @@ if (xm) {
   if (!e?.policy?.installation || !e?.policy?.authentication || !e?.category) problems.push('.agents/plugins/marketplace.json: entries need policy.installation, policy.authentication and category');
 }
 
+// Icon and logo fields: the file must be in the repository, in a shape each format accepts.
+// Claude Code wants a square PNG or JPEG of 512 to 2048 px under 2 MB; Codex a square image of at least 48 px.
+function imageSize(rel) {
+  const file = path.join(root, rel);
+  if (!rel || rel.includes('..') || !fs.existsSync(file)) return null;
+  const buf = fs.readFileSync(file);
+  if (buf.subarray(1, 4).toString('latin1') === 'PNG') return { type: 'png', width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), bytes: buf.length };
+  const vb = /<svg\b[^>]*\bviewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/.exec(buf.toString('utf8'));
+  if (vb) return { type: 'svg', width: Number(vb[1]), height: Number(vb[2]), bytes: buf.length };
+  return { type: 'other', width: 0, height: 0, bytes: buf.length };
+}
+const icons = [
+  ['.claude-plugin/plugin.json icon', manifests.claude?.icon, (s) => s.type === 'png' && s.width === s.height && s.width >= 512 && s.width <= 2048 && s.bytes < 2 * 1024 * 1024],
+  ['.codex-plugin/plugin.json interface.composerIcon', manifests.codex?.interface?.composerIcon, (s) => s.width === s.height && s.width >= 48],
+  ['.codex-plugin/plugin.json interface.logo', manifests.codex?.interface?.logo, (s) => s.width === s.height && s.width >= 48],
+  ['plugin.json extensions.com.openai.interface.composerIcon', ap?.extensions?.['com.openai']?.interface?.composerIcon, (s) => s.width === s.height && s.width >= 48],
+  ['plugin.json extensions.com.openai.interface.logo', ap?.extensions?.['com.openai']?.interface?.logo, (s) => s.width === s.height && s.width >= 48],
+  ['.cursor-plugin/plugin.json logo', manifests.cursor?.logo, (s) => s.type !== 'other'],
+];
+for (const [label, value, fits] of icons) {
+  if (value === undefined) continue;
+  const size = typeof value === 'string' ? imageSize(value.replace(/^\.\//, '')) : null;
+  if (!size) problems.push(`${label}: ${value} is not a file in the repository`);
+  else if (!fits(size)) problems.push(`${label}: ${value} is ${size.type} ${size.width}x${size.height}, ${size.bytes} bytes, which this format does not accept`);
+}
+
 const skillsDir = path.join(root, 'skills');
 const skills = fs.readdirSync(skillsDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
 const PORTABLE = new Set(['name', 'description', 'license', 'compatibility', 'metadata', 'allowed-tools']);
