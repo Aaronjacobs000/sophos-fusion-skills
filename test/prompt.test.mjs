@@ -52,6 +52,16 @@ describe('hidden prompt', () => {
     assert.equal(await answer, 'abc');
   });
 
+  test('Ctrl-C cancels and hands the terminal back, so the process can exit', { timeout: 2000 }, async () => {
+    const t = terminal();
+    const answer = promptHidden('secret: ', t);
+    t.input.write('half-typed\u0003');
+    await assert.rejects(answer, (e) => e instanceof UsageError && /Canceled/.test(e.message));
+    assert.equal(t.input.isRaw, false);
+    assert.equal(t.input.listenerCount('data'), 0);
+    assert.equal(t.input.isPaused(), true);
+  });
+
   test('no terminal is a usage error', async () => {
     const t = terminal();
     t.input.isTTY = false;
