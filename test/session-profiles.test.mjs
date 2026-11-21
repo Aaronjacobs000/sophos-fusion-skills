@@ -105,8 +105,11 @@ describe('profiles', () => {
   test('a saved profile file is 0600 in a 0700 folder and never echoes the secret', () => {
     const dir = path.join(tempDir(), 'cfg');
     const r = saveProfile('lab', { clientId: 'client-abcdef123', clientSecret: 'very-secret-value', kind: 'test' }, env(dir));
-    assert.equal(fs.statSync(profilesPath(env(dir))).mode & 0o777, 0o600);
-    assert.equal(fs.statSync(dir).mode & 0o777, 0o700);
+    // Windows has no POSIX mode bits (chmod only toggles read-only); there the file sits in the user's own profile folder.
+    if (process.platform !== 'win32') {
+      assert.equal(fs.statSync(profilesPath(env(dir))).mode & 0o777, 0o600);
+      assert.equal(fs.statSync(dir).mode & 0o777, 0o700);
+    }
     assert.equal(r.profile.clientSecret, 'stored in profile file');
     assert.equal(r.profile.clientId, 'clie...f123');
     assert.ok(!JSON.stringify(listProfiles(env(dir))).includes('very-secret-value'));
@@ -155,22 +158,25 @@ describe('profiles', () => {
 });
 
 describe('1Password references (stubbed op)', () => {
+  // The stub op is node itself with a preload that answers like op and exits before
+  // node looks for a script. It runs on Windows too, where a #! script can't be started
+  // without a shell. Returns the environment that points the scripts at it.
   function stubOp(dir, { fail = false } = {}) {
-    const bin = path.join(dir, 'op-stub.mjs');
-    fs.writeFileSync(bin, `#!${process.execPath}\nconst [cmd, flag, ref] = process.argv.slice(2);\nif (${fail} || cmd !== 'read' || flag !== '--no-newline' || !ref.startsWith('op://')) { process.stderr.write('stub refused'); process.exit(1); }\nprocess.stdout.write('stub-secret-for-' + ref.split('/').pop());\n`, { mode: 0o755 });
-    return bin;
+    const preload = path.join(dir, 'op-stub.cjs');
+    fs.writeFileSync(preload, `const fs = require('node:fs');\nconst cmd = require('node:path').basename(process.argv[1] || '');\nconst [flag, ref] = process.argv.slice(2);\nif (${fail} || cmd !== 'read' || flag !== '--no-newline' || !String(ref).startsWith('op://')) { fs.writeSync(2, 'stub refused'); process.exit(1); }\nfs.writeSync(1, 'stub-secret-for-' + ref.split('/').pop());\nprocess.exit(0);\n`);
+    return { SOPHOS_FUSION_OP_BIN: process.execPath, NODE_OPTIONS: `--require ${JSON.stringify(preload)}`, PATH: process.env.PATH };
   }
 
   test('reads an op:// reference through the op CLI', () => {
     const dir = tempDir();
-    const v = resolveSecret('op://Vault/Item/client_secret', { env: { SOPHOS_FUSION_OP_BIN: stubOp(dir), PATH: process.env.PATH } });
+    const v = resolveSecret('op://Vault/Item/client_secret', { env: stubOp(dir) });
     assert.equal(v, 'stub-secret-for-client_secret');
     assert.equal(redactText('x stub-secret-for-client_secret'), 'x [redacted]');
   });
 
   test('a failed op read says so without leaking anything', () => {
     const dir = tempDir();
-    assert.throws(() => resolveSecret('op://Vault/Item/x', { env: { SOPHOS_FUSION_OP_BIN: stubOp(dir, { fail: true }), PATH: process.env.PATH } }), (e) => e.code === 'secret_unavailable');
+    assert.throws(() => resolveSecret('op://Vault/Item/x', { env: stubOp(dir, { fail: true }) }), (e) => e.code === 'secret_unavailable');
   });
 
   test('a missing op binary is reported plainly', () => {
@@ -185,7 +191,7 @@ describe('1Password references (stubbed op)', () => {
     const dir = tempDir();
     const mock = installFetch(authRules());
     try {
-      const s = new Session(profile({ clientId: 'op://V/I/id', clientSecret: 'op://V/I/secret' }), { env: { SOPHOS_FUSION_OP_BIN: stubOp(dir), PATH: process.env.PATH } });
+      const s = new Session(profile({ clientId: 'op://V/I/id', clientSecret: 'op://V/I/secret' }), { env: stubOp(dir) });
       await s.token();
       const body = mock.calls[0].body;
       assert.match(body, /client_id=stub-secret-for-id/);

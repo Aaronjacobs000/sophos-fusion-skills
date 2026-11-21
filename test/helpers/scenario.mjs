@@ -4,10 +4,11 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const MOCK = path.join(ROOT, 'test', 'helpers', 'mock-fetch.mjs');
+// --import takes a module specifier, and a bare Windows path (C:\...) is not one.
+const MOCK = pathToFileURL(path.join(ROOT, 'test', 'helpers', 'mock-fetch.mjs')).href;
 
 export const FAKE = {
   clientId: 'test-client-id-0001',
@@ -40,6 +41,7 @@ export function runScript(script, args, { rules = [], env = {}, kind = 'test', s
   const childEnv = {
     PATH: process.env.PATH,
     HOME: dir,
+    USERPROFILE: dir,
     SFS_MOCK_SCENARIO: scenario,
     SFS_MOCK_LOG: log,
     SOPHOS_FUSION_CLIENT_ID: FAKE.clientId,

@@ -71,7 +71,7 @@ for (const s of skills) {
     continue;
   }
   const text = fs.readFileSync(file, 'utf8');
-  const m = /^---\n([\s\S]*?)\n---\n/.exec(text);
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(text);
   if (!m) {
     problems.push(`skills/${s}/SKILL.md: frontmatter must start on line 1`);
     continue;

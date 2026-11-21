@@ -5,6 +5,8 @@ All notable changes to this project are listed here. Versions follow semantic ve
 ## Unreleased
 
 - CI runs on Ubuntu while the repository is private and adds macOS and Windows once it is public. A manual run with `full_matrix` set adds them sooner.
+- Windows: profile and ledger writes retry a rename that Windows refuses while another process holds the file, and the ledger lock waits while Windows finishes removing the old lock folder. Files saved with CRLF line endings validate the same as LF files, and `.gitattributes` checks text files out with LF.
+- Tests run on Windows: the mocked fetch and the lock test import by file URL, the 1Password stub is node with a preload instead of a `#!` script, and the 0600 mode check is skipped where Windows has no POSIX modes.
 
 ## 0.1.0 (2026-11-21)
 

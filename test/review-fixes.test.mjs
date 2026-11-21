@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { requireWrite } from '../lib/cli.mjs';
 import { GateError, MutationUnconfirmedError, SfsError } from '../lib/errors.mjs';
 import { sendWithRetry, setSleep } from '../lib/retry.mjs';
@@ -156,7 +157,7 @@ describe('ledger lock', () => {
   test('parallel writers keep every entry', async () => {
     const stateDir = tempDir();
     startRun({ env: { SOPHOS_FUSION_STATE_DIR: stateDir } });
-    const script = `import { record } from ${JSON.stringify(path.join(ROOT, 'lib/ledger.mjs'))};\nfor (let i = 0; i < 15; i++) record({ kind: 'connection', id: process.argv[2] + '-' + i, name: 'n', tenantId: 't', profile: 'p' }, { env: { SOPHOS_FUSION_STATE_DIR: ${JSON.stringify(stateDir)} } });`;
+    const script = `import { record } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'lib/ledger.mjs')).href)};\nfor (let i = 0; i < 15; i++) record({ kind: 'connection', id: process.argv[2] + '-' + i, name: 'n', tenantId: 't', profile: 'p' }, { env: { SOPHOS_FUSION_STATE_DIR: ${JSON.stringify(stateDir)} } });`;
     const file = path.join(stateDir, 'writer.mjs');
     fs.writeFileSync(file, script);
     await Promise.all(['a', 'b', 'c', 'd'].map((w) => new Promise((resolve, reject) => {

@@ -1,0 +1,4 @@
+# Check text files out with LF on every platform, so Windows clones match the
+# tests, the fixtures, and what the tenant receives on import.
+* text=auto eol=lf
+*.png binary
