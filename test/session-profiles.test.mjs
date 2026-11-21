@@ -196,6 +196,9 @@ describe('1Password references (stubbed op)', () => {
       const body = mock.calls[0].body;
       assert.match(body, /client_id=stub-secret-for-id/);
       assert.match(body, /client_secret=stub-secret-for-secret/);
+      // The resolved client ID is kept out of output as an identifier, the secret as a secret
+      assert.equal(redactText('id stub-secret-for-id'), 'id [client ID]');
+      assert.equal(redactText('secret stub-secret-for-secret'), 'secret [redacted]');
     } finally {
       mock.restore();
     }

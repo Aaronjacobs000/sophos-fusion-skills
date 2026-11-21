@@ -11,7 +11,7 @@ import { parseCel } from '../lib/cel.mjs';
 import { diagnose, templateMarkers, logTask } from '../lib/diagnose.mjs';
 import { scaffoldPlaybook, scaffoldConnector } from '../lib/scaffold.mjs';
 import { validateText } from '../lib/rules.mjs';
-import { ROOT } from './helpers/scenario.mjs';
+import { authRules, FAKE, ROOT, runScript } from './helpers/scenario.mjs';
 
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
@@ -140,6 +140,42 @@ describe('diagnosis', () => {
   test('secrets in a log are flagged', () => {
     const logs = [{ taskID: 1, message: { task: 'post', status: { Completion: 'Success' }, request: { url: 'https://hooks.slack.com/services/T0/B0/abcdefgh' } } }];
     assert.ok(diagnose({ state: 'Completed', outcomeStatus: 'SUCCESS' }, logs).some((x) => x.kind === 'secret_in_log'));
+  });
+
+  test('the client ID in a case event is an identifier, not a secret, in logs and diagnose', () => {
+    // A close event made by the API credential: Fusion records its client ID as the creator, updater, and closer
+    const actor = FAKE.clientId;
+    const logs = [
+      { id: 'L0', taskID: 0, parentID: null, message: { inputs: { case: { createdById: actor, updatedById: actor, contributorIds: [actor], delta: { changes: { closed_by_id: { before: null, after: actor } } } } } }, createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'L1', taskID: 1, parentID: null, message: { task: 'add_note', taskType: 'action', status: { Completion: 'Success' } }, createdAt: '2026-01-01T00:00:01Z' },
+    ];
+    const execution = { id: 'E1', state: 'Completed', outcomeStatus: 'SUCCESS', outcomeMessage: 'noted', inputs: {}, outputs: {}, summary: null, events: [] };
+    const rules = [
+      ...authRules(),
+      { match: { op: 'playbookExecutionLogs' }, respond: { json: { data: { playbookExecutionLogs: logs } } } },
+      { match: { op: 'playbookExecution' }, respond: { json: { data: { playbookExecution: execution } } } },
+    ];
+    const l = runScript('skills/execution/scripts/run.mjs', ['logs', '--execution', 'E1', '--raw'], { rules });
+    assert.equal(l.status, 0, l.stdout);
+    assert.deepEqual(l.json.secretLooking, []);
+    assert.equal(l.json.identifiers.length, 4);
+    assert.ok(l.json.identifiers.every((i) => i.identifier === 'client ID'));
+    assert.ok(!l.stdout.includes(actor), 'the client ID is not printed');
+    assert.equal(l.json.logs[0].message.inputs.case.createdById, '[client ID]');
+    const d = runScript('skills/execution/scripts/run.mjs', ['diagnose', '--execution', 'E1'], { rules });
+    assert.equal(d.status, 0, d.stdout);
+    assert.deepEqual(d.json.findings.map((f) => f.kind), ['ok', 'identifier_in_log']);
+    assert.match(d.json.findings[1].message, /client ID in 4 place\(s\).*not a secret/);
+  });
+
+  test('the client secret in a log is still a secret', () => {
+    const logs = [{ id: 'L0', taskID: 0, parentID: null, message: { inputs: { case: { createdById: FAKE.clientId, note: `oops ${FAKE.clientSecret}` } } }, createdAt: '2026-01-01T00:00:00Z' }];
+    const rules = [...authRules(), { match: { op: 'playbookExecutionLogs' }, respond: { json: { data: { playbookExecutionLogs: logs } } } }];
+    const l = runScript('skills/execution/scripts/run.mjs', ['logs', '--execution', 'E1'], { rules });
+    assert.equal(l.status, 0, l.stdout);
+    assert.deepEqual(l.json.secretLooking.map((x) => [x.kind, x.path]), [['known_secret', '$[0].message.inputs.case.note']]);
+    assert.deepEqual(l.json.identifiers.map((x) => x.path), ['$[0].message.inputs.case.createdById']);
+    assert.ok(!l.stdout.includes(FAKE.clientSecret));
   });
 
   test('run parameters holding ${ are found before they reach Fusion', () => {

@@ -1,6 +1,6 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { addSecret, clearSecrets, findLeaks, redact, redactText } from '../lib/redact.mjs';
+import { addIdentifier, addSecret, clearSecrets, findIdentifiers, findLeaks, redact, redactText } from '../lib/redact.mjs';
 
 describe('redaction', () => {
   beforeEach(() => clearSecrets());
@@ -61,5 +61,60 @@ describe('leak detection in logs', () => {
     assert.equal(found.length, 1);
     assert.equal(found[0].kind, 'known_secret');
     assert.equal(found[0].sample, '[redacted]');
+  });
+});
+
+describe('the client ID in logs', () => {
+  beforeEach(() => clearSecrets());
+
+  // The shape Fusion puts in a case event when the API credential closed the case
+  const event = (actor) => ({
+    message: {
+      inputs: {
+        case: {
+          createdById: actor,
+          updatedById: actor,
+          contributorIds: [actor],
+          delta: { changes: { closed_by_id: { before: null, after: actor } } },
+        },
+      },
+    },
+  });
+
+  test('is listed as an identifier, not a secret', () => {
+    addSecret('the-real-client-secret');
+    addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
+    const logs = [event('11111111-aaaa-4bbb-8ccc-222222222222')];
+    assert.deepEqual(findLeaks(logs), []);
+    const ids = findIdentifiers(logs);
+    assert.deepEqual(ids.map((i) => i.path).sort(), [
+      '$[0].message.inputs.case.contributorIds[0]',
+      '$[0].message.inputs.case.createdById',
+      '$[0].message.inputs.case.delta.changes.closed_by_id.after',
+      '$[0].message.inputs.case.updatedById',
+    ]);
+    assert.ok(ids.every((i) => i.identifier === 'client ID'));
+  });
+
+  test('stays out of output, behind a marker that names it', () => {
+    addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
+    assert.equal(redactText('closed by 11111111-aaaa-4bbb-8ccc-222222222222'), 'closed by [client ID]');
+    assert.deepEqual(redact({ createdById: '11111111-aaaa-4bbb-8ccc-222222222222' }), { createdById: '[client ID]' });
+  });
+
+  test('is an identifier even when another path also registered it as a secret', () => {
+    addSecret('11111111-aaaa-4bbb-8ccc-222222222222');
+    addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
+    assert.deepEqual(findLeaks(event('11111111-aaaa-4bbb-8ccc-222222222222')), []);
+    assert.equal(redactText('11111111-aaaa-4bbb-8ccc-222222222222'), '[client ID]');
+  });
+
+  test('a real secret is still flagged, in an ID field or next to the client ID', () => {
+    addSecret('the-real-client-secret');
+    addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
+    const kinds = (v) => findLeaks(v).map((l) => l.kind);
+    assert.deepEqual(kinds(event('the-real-client-secret')), ['known_secret', 'known_secret', 'known_secret', 'known_secret']);
+    assert.deepEqual(kinds({ body: 'client_id=11111111-aaaa-4bbb-8ccc-222222222222&client_secret=the-real-client-secret' }), ['secret_pair', 'known_secret']);
+    assert.deepEqual(kinds({ updatedById: 'Bearer abcdefghijklmnopqrstuvwxyz' }), ['bearer_token']);
   });
 });

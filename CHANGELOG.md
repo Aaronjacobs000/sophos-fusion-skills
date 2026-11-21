@@ -9,6 +9,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - Tests run on Windows: the mocked fetch and the lock test import by file URL, the 1Password stub is node with a preload instead of a `#!` script, and the 0600 mode check is skipped where Windows has no POSIX modes.
 - The README shows the Sophos logo, with the white version in dark mode. The Claude Code, Codex, and Cursor manifests name an icon: a square PNG of the Sophos brandmark, with transparent padding, for Claude Code, and the brandmark SVG for Codex and Cursor. `tools/check-manifests.mjs` checks that each icon file exists and fits its format.
 - The Closed case detection note example ran live on a test case: one run and one comment, with the template and instance removed afterward.
+- `run.mjs logs` and `diagnose` list the API client ID apart, as an identifier, when an event in the log carries it, for example as a case's creator. Output shows it as `[client ID]`. Real secrets are still flagged wherever they sit.
 
 ## 0.1.0 (2026-11-21)
 

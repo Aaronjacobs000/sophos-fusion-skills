@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import { intArg, main } from '../../../lib/cli.mjs';
 import { SfsError, UsageError, GraphQLError, MutationUnconfirmedError } from '../../../lib/errors.mjs';
 import * as F from '../../../lib/fusion.mjs';
-import { findLeaks } from '../../../lib/redact.mjs';
+import { findIdentifiers, findLeaks } from '../../../lib/redact.mjs';
 import { diagnose, logTask, templateMarkers, REAUTH_HELP } from '../../../lib/diagnose.mjs';
 import { log } from '../../../lib/log.mjs';
 import { sleep } from '../../../lib/retry.mjs';
@@ -129,7 +129,8 @@ const spec = {
       run: async (ctx, args) => {
         const logs = await F.executionLogs(ctx.client, args.execution);
         const leaks = findLeaks(logs);
-        return { execution: args.execution, entries: logs.length, secretLooking: leaks, ...(args.raw ? { logs } : { tasks: logs.map(logTask) }) };
+        const identifiers = findIdentifiers(logs);
+        return { execution: args.execution, entries: logs.length, secretLooking: leaks, identifiers, ...(args.raw ? { logs } : { tasks: logs.map(logTask) }) };
       },
     },
     list: {
