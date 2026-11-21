@@ -12,12 +12,12 @@
 [![CI](https://github.com/Aaronjacobs000/sophos-fusion-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Aaronjacobs000/sophos-fusion-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
+> [!IMPORTANT]
+> This is an unofficial project. Sophos did not make it and does not support it, so report problems here rather than to Sophos Support. Use it at your own risk, and try it on a non-production tenant first.
+
 Ask your coding agent for a Sophos Fusion playbook in plain words. These skills look up the real connectors, triggers, and CEL functions on your tenant, write the template, check it offline and on the tenant, import a test copy, run it, and read the log back to you. Every write waits for your yes, and everything a run creates can be rolled back.
 
 The skills call the Sophos Fusion API through small Node scripts in this repository. There is no MCP server and nothing to install beyond Node 22.
-
-> [!IMPORTANT]
-> This is an unofficial project. Sophos did not make it and does not support it. Use it at your own risk, and try it on a non-production tenant first.
 
 ## Contents
 
@@ -268,7 +268,7 @@ What has been run so far: the full cycle on an XDR test tenant in eu02, and the 
 
 ## Contributing and releases
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go through GitHub private vulnerability reporting, as described in [SECURITY.md](SECURITY.md).
+To report a bug or ask a question, open an issue with the command you ran and its output. Leave out credentials, tenant IDs, and customer data. Security reports go through GitHub private vulnerability reporting instead, as described in [SECURITY.md](SECURITY.md). To change the code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 For a release, bump the version in `lib/constants.mjs`, `package.json`, and every manifest. Then `tools/check-manifests.mjs` passes, the changelog gets an entry, and the tag is `v<version>`.
 
