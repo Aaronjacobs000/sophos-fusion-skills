@@ -19,6 +19,8 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - The CEL reference had `isCaseClosed(inputs)` wrong. Measured on a real close event, it reads only `case.primaryStatus.isClosed`, so it is true on real events and false on test events that leave that field out. The example's sample event now carries it.
 - The README gives the Windows route for linking the skills: directory junctions from Command Prompt, because Git Bash's `ln -s` makes copies and a copied skill can't load the shared `lib/` code.
 - On Windows the ledger is kept in `%LOCALAPPDATA%\sophos-fusion-skills`, the usual place for per-user state, instead of `%USERPROFILE%\.local\state\sophos-fusion-skills`. macOS and Linux are unchanged, and `SOPHOS_FUSION_STATE_DIR` still moves it everywhere.
+- `run.mjs cancel` returns a `canceled` key instead of `cancelled`, to match Fusion's own spelling.
+- The setup docs and the self-test point to the API Credentials page in Sophos Fusion.
 
 ## 0.1.0 (2026-11-21)
 
