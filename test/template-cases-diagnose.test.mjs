@@ -1,6 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { makeTestCopy, extractDsl, normalizeForDiff, diffValues, dependencyList, testName } from '../lib/template.mjs';
@@ -201,7 +202,9 @@ describe('every script', () => {
   }
 
   test('offline validation runs with no credentials at all', () => {
-    const r = spawnSync(process.execPath, [path.join(ROOT, 'skills/validation/scripts/validate.mjs'), 'all', path.join(ROOT, 'examples')], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: '/nonexistent' } });
+    const empty = path.join(os.tmpdir(), 'sfs-no-home-does-not-exist');
+    const env = { PATH: process.env.PATH, HOME: empty, USERPROFILE: empty, SOPHOS_FUSION_CONFIG_DIR: path.join(empty, 'config'), SOPHOS_FUSION_STATE_DIR: path.join(empty, 'state') };
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'skills/validation/scripts/validate.mjs'), 'all', path.join(ROOT, 'examples')], { encoding: 'utf8', env });
     assert.equal(r.status, 0, r.stdout);
     assert.equal(JSON.parse(r.stdout).ok, true);
   });

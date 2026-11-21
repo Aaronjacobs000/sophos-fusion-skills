@@ -105,8 +105,8 @@ describe('Windows busy paths', () => {
     mock.method(fs, 'renameSync', () => {
       throw busyError('EBUSY');
     });
-    assert.throws(() => replaceFile('a', 'b'), /EBUSY/);
-    assert.equal(fs.renameSync.mock.callCount(), 20);
+    assert.throws(() => replaceFile('a', 'b', { attempts: 5, waitMs: 1 }), /EBUSY/);
+    assert.equal(fs.renameSync.mock.callCount(), 5);
   });
 
   test('the ledger lock waits while Windows refuses a lock folder that is being removed', () => {
@@ -122,6 +122,19 @@ describe('Windows busy paths', () => {
     record({ kind: 'connection', id: 'c1', name: 'ZZ Test c', tenantId: 't', profile: 'p' }, { env });
     assert.equal(Object.values(readLedger(env).runs)[0].objects.length, 1);
     assert.ok(!fs.existsSync(path.join(env.SOPHOS_FUSION_STATE_DIR, 'ledger.lock')));
+  });
+
+  test('on Windows a refusal that lasts is reported as itself, not as a lock', () => {
+    pretendPlatform('win32');
+    const env = { SOPHOS_FUSION_STATE_DIR: tempDir() };
+    const real = fs.mkdirSync;
+    mock.method(fs, 'mkdirSync', (p, opts) => {
+      if (p.endsWith('ledger.lock')) throw busyError('EACCES');
+      return real(p, opts);
+    });
+    const started = Date.now();
+    assert.throws(() => withLock(env, () => 1), (e) => e.code === 'EACCES');
+    assert.ok(Date.now() - started < 9_000);
   });
 
   test('elsewhere a refused lock folder is an error, not a wait', () => {

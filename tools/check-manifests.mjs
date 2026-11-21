@@ -62,29 +62,44 @@ if (xm) {
 }
 
 // Icon and logo fields: the file must be in the repository, in a shape each format accepts.
-// Claude Code wants a square PNG or JPEG of 512 to 2048 px under 2 MB; Codex a square image of at least 48 px.
+// Claude Code wants a square PNG or JPEG of 512 to 2048 px under 2 MB; Codex a square image of at
+// least 48 px (for SVG, a square viewBox of at least 48). This check reads PNG and SVG files only.
 function imageSize(rel) {
   const file = path.join(root, rel);
-  if (!rel || rel.includes('..') || !fs.existsSync(file)) return null;
+  if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return null;
   const buf = fs.readFileSync(file);
-  if (buf.subarray(1, 4).toString('latin1') === 'PNG') return { type: 'png', width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), bytes: buf.length };
+  if (buf.length >= 24 && buf.subarray(1, 4).toString('latin1') === 'PNG') return { type: 'png', width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), bytes: buf.length };
   const vb = /<svg\b[^>]*\bviewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/.exec(buf.toString('utf8'));
   if (vb) return { type: 'svg', width: Number(vb[1]), height: Number(vb[2]), bytes: buf.length };
   return { type: 'other', width: 0, height: 0, bytes: buf.length };
 }
+const DOT_SLASH = /^\.\/(?!.*\.\.)[^\\]+$/;
+const RELATIVE = /^(?!\/|\.\.|[A-Za-z]:)(?!.*\.\.)[^\\]+$/;
+const square = (min) => (s) => s.type !== 'other' && s.width === s.height && s.width >= min;
 const icons = [
-  ['.claude-plugin/plugin.json icon', manifests.claude?.icon, (s) => s.type === 'png' && s.width === s.height && s.width >= 512 && s.width <= 2048 && s.bytes < 2 * 1024 * 1024],
-  ['.codex-plugin/plugin.json interface.composerIcon', manifests.codex?.interface?.composerIcon, (s) => s.width === s.height && s.width >= 48],
-  ['.codex-plugin/plugin.json interface.logo', manifests.codex?.interface?.logo, (s) => s.width === s.height && s.width >= 48],
-  ['plugin.json extensions.com.openai.interface.composerIcon', ap?.extensions?.['com.openai']?.interface?.composerIcon, (s) => s.width === s.height && s.width >= 48],
-  ['plugin.json extensions.com.openai.interface.logo', ap?.extensions?.['com.openai']?.interface?.logo, (s) => s.width === s.height && s.width >= 48],
-  ['.cursor-plugin/plugin.json logo', manifests.cursor?.logo, (s) => s.type !== 'other'],
+  ['.claude-plugin/plugin.json icon', manifests.claude?.icon, DOT_SLASH, (s) => s.type === 'png' && square(512)(s) && s.width <= 2048 && s.bytes < 2 * 1024 * 1024],
+  ['.codex-plugin/plugin.json interface.composerIcon', manifests.codex?.interface?.composerIcon, DOT_SLASH, square(48)],
+  ['.codex-plugin/plugin.json interface.logo', manifests.codex?.interface?.logo, DOT_SLASH, square(48)],
+  ['plugin.json extensions.com.openai.interface.composerIcon', ap?.extensions?.['com.openai']?.interface?.composerIcon, DOT_SLASH, square(48)],
+  ['plugin.json extensions.com.openai.interface.logo', ap?.extensions?.['com.openai']?.interface?.logo, DOT_SLASH, square(48)],
+  ['.cursor-plugin/plugin.json logo', manifests.cursor?.logo, RELATIVE, (s) => s.type !== 'other'],
 ];
-for (const [label, value, fits] of icons) {
+for (const [label, value, form, fits] of icons) {
   if (value === undefined) continue;
-  const size = typeof value === 'string' ? imageSize(value.replace(/^\.\//, '')) : null;
+  if (typeof value !== 'string' || !form.test(value)) {
+    problems.push(`${label}: ${value} must be a relative path inside the repository${form === DOT_SLASH ? ' that starts with ./' : ''}`);
+    continue;
+  }
+  const size = imageSize(value.replace(/^\.\//, ''));
   if (!size) problems.push(`${label}: ${value} is not a file in the repository`);
+  else if (size.type === 'other') problems.push(`${label}: ${value} is not a PNG or SVG, which is all this check can read`);
   else if (!fits(size)) problems.push(`${label}: ${value} is ${size.type} ${size.width}x${size.height}, ${size.bytes} bytes, which this format does not accept`);
+}
+// Claude Code reads the directory listing fields from plugin.json only; a marketplace entry may not carry them.
+for (const entry of manifests.claudeMarket?.plugins || []) {
+  for (const k of ['icon', 'documentationUrl', 'supportUrl', 'privacyPolicyUrl', 'termsOfServiceUrl']) {
+    if (k in entry) problems.push(`.claude-plugin/marketplace.json: ${entry.name} sets ${k}, which belongs in .claude-plugin/plugin.json`);
+  }
 }
 
 const skillsDir = path.join(root, 'skills');
