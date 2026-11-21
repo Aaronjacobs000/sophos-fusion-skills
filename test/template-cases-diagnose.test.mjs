@@ -187,6 +187,15 @@ describe('diagnosis', () => {
     assert.equal(r.status, 0, r.stdout);
     assert.equal(r.json.execution, null);
     assert.deepEqual(r.json.findings.map((x) => x.kind), ['record_gone', 'failed_tasks', 'no_such_key', 'secret_in_log']);
+    assert.deepEqual(r.json.failedTasks, [{ name: 'post', state: 'Failure', reason: 'no such key: outputs' }]);
+  });
+
+  test('an unknown run is not_found even if the log read answers not found too', () => {
+    const notFound = (op) => ({ match: { op }, respond: { json: { data: { [op]: null }, errors: [{ message: 'PB21: record not found', path: [op] }] } } });
+    // diagnose waits up to 15 s for a run that has just finished to show, so this test takes that long
+    const r = runScript('skills/execution/scripts/run.mjs', ['diagnose', '--execution', 'nope'], { rules: [...authRules(), notFound('playbookExecutionLogs'), notFound('playbookExecution')] });
+    assert.equal(r.status, 0, r.stdout);
+    assert.deepEqual(r.json.findings.map((x) => x.kind), ['not_found']);
   });
 
   test('the client secret in a log is still a secret', () => {

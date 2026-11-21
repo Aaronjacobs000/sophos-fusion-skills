@@ -150,8 +150,14 @@ const spec = {
       run: async (ctx, args) => {
         const e = await F.getExecutionSettled(ctx.client, args.execution, { full: true });
         // The log outlives the run record, which reads as not found after the instance and template are deleted
-        const logs = await F.executionLogs(ctx.client, args.execution);
-        const failedEvents = (e?.events || []).filter((ev) => ['Failed', 'TimedOut', 'Canceled'].includes(ev.state)).map((ev) => ({ name: ev.name, state: ev.state, reason: ev.reason }));
+        const logs = await F.executionLogs(ctx.client, args.execution).catch((error) => {
+          if (!e && error instanceof GraphQLError && error.notFound) return [];
+          throw error;
+        });
+        // With only the log left, the failed tasks come from it
+        const failedEvents = e
+          ? (e.events || []).filter((ev) => ['Failed', 'TimedOut', 'Canceled'].includes(ev.state)).map((ev) => ({ name: ev.name, state: ev.state, reason: ev.reason }))
+          : logs.map(logTask).filter((t) => t.error || (t.completion && t.completion !== 'Success')).map((t) => ({ name: t.name, state: t.completion, reason: t.error }));
         return { execution: e ? { id: e.id, state: e.state, outcomeStatus: e.outcomeStatus, outcomeMessage: e.outcomeMessage } : null, failedTasks: failedEvents, findings: diagnose(e, logs) };
       },
     },
