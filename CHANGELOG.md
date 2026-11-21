@@ -18,6 +18,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - It also reads an SVG `viewBox` written in single quotes or with spaces around `=`, which it used to report as unreadable.
 - The CEL reference had `isCaseClosed(inputs)` wrong. Measured on a real close event, it reads only `case.primaryStatus.isClosed`, so it is true on real events and false on test events that leave that field out. The example's sample event now carries it.
 - The README gives the Windows route for linking the skills: directory junctions from Command Prompt, because Git Bash's `ln -s` makes copies and a copied skill can't load the shared `lib/` code.
+- On Windows the ledger is kept in `%LOCALAPPDATA%\sophos-fusion-skills`, the usual place for per-user state, instead of `%USERPROFILE%\.local\state\sophos-fusion-skills`. macOS and Linux are unchanged, and `SOPHOS_FUSION_STATE_DIR` still moves it everywhere.
 
 ## 0.1.0 (2026-11-21)
 

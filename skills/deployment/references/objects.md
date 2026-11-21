@@ -25,4 +25,4 @@ A write's success answer is not proof. After every write the scripts read the ob
 
 ## The ledger
 
-`~/.local/state/sophos-fusion-skills/ledger.json` (`SOPHOS_FUSION_STATE_DIR` moves it). Each run holds the objects created under it: kind, ID, name, tenant, profile, parent, time, and status (live, deleted, gone, delete_failed). Do not delete the file while it lists live objects.
+`~/.local/state/sophos-fusion-skills/ledger.json`, or `%LOCALAPPDATA%\sophos-fusion-skills\ledger.json` on Windows (`SOPHOS_FUSION_STATE_DIR` moves it). Each run holds the objects created under it: kind, ID, name, tenant, profile, parent, time, and status (live, deleted, gone, delete_failed). Do not delete the file while it lists live objects.

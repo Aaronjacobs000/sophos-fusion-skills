@@ -1,16 +1,17 @@
 // Behavior that has to hold on Windows as well as macOS and Linux: files saved
-// with CRLF line endings, and Windows refusing a rename or a new folder for a
-// moment while another process holds the path.
+// with CRLF line endings, Windows refusing a rename or a new folder for a
+// moment while another process holds the path, and where the ledger is kept.
 
 import { test, describe, mock, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { validateText } from '../lib/rules.mjs';
 import { loadCases } from '../lib/cel-cases.mjs';
 import { makeTestCopy } from '../lib/template.mjs';
 import { isWindowsBusy, replaceFile } from '../lib/fsx.mjs';
-import { readLedger, record, startRun, withLock } from '../lib/ledger.mjs';
+import { ledgerPath, readLedger, record, startRun, stateDir, withLock } from '../lib/ledger.mjs';
 import { ROOT, tempDir } from './helpers/scenario.mjs';
 
 const crlf = (text) => text.replace(/\r?\n/g, '\r\n');
@@ -146,5 +147,39 @@ describe('Windows busy paths', () => {
       return real(p, opts);
     });
     assert.throws(() => withLock(env, () => 1), /EPERM/);
+  });
+});
+
+describe('where the ledger is kept', () => {
+  test('on Windows it goes under %LOCALAPPDATA%, and XDG_STATE_HOME does not move it', () => {
+    pretendPlatform('win32');
+    const local = tempDir();
+    const env = { LOCALAPPDATA: local, XDG_STATE_HOME: tempDir() };
+    assert.equal(stateDir(env), path.join(local, 'sophos-fusion-skills'));
+    startRun({ env });
+    assert.ok(fs.existsSync(path.join(local, 'sophos-fusion-skills', 'ledger.json')));
+    assert.equal(ledgerPath(env), path.join(local, 'sophos-fusion-skills', 'ledger.json'));
+  });
+
+  test('on Windows without LOCALAPPDATA it uses AppData\\Local in the home folder', () => {
+    pretendPlatform('win32');
+    mock.method(os, 'homedir', () => path.join('home', 'user'));
+    assert.equal(stateDir({}), path.join('home', 'user', 'AppData', 'Local', 'sophos-fusion-skills'));
+  });
+
+  test('on macOS and Linux it stays in the XDG state folder, and LOCALAPPDATA does not move it', () => {
+    mock.method(os, 'homedir', () => path.join('home', 'user'));
+    for (const name of ['darwin', 'linux']) {
+      pretendPlatform(name);
+      assert.equal(stateDir({ LOCALAPPDATA: 'x' }), path.join('home', 'user', '.local', 'state', 'sophos-fusion-skills'));
+      assert.equal(stateDir({ XDG_STATE_HOME: 'xdg', LOCALAPPDATA: 'x' }), path.join('xdg', 'sophos-fusion-skills'));
+    }
+  });
+
+  test('SOPHOS_FUSION_STATE_DIR moves it on every platform', () => {
+    for (const name of ['win32', 'darwin', 'linux']) {
+      pretendPlatform(name);
+      assert.equal(stateDir({ SOPHOS_FUSION_STATE_DIR: 'mine', LOCALAPPDATA: 'x', XDG_STATE_HOME: 'y' }), 'mine');
+    }
   });
 });
