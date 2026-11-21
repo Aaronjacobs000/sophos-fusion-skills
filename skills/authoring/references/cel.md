@@ -43,7 +43,7 @@ The `detection*` functions take any detection record, not only `inputs`: `detect
 | `toString('x')` | `"\"x\""` (adds quotes) | use `string()` for strings |
 | `isIP('2001:db8::1')` | true, although the docs say IPv4 | add `!ip.contains(':')` for IPv4 only |
 | `isPrivateIP` | true for RFC 1918, loopback, link-local IPv4 | |
-| `isCaseClosed(inputs)` | reads only `case.primaryStatus.isClosed`: true on a real close event, false when that field is missing (as in most hand-made events) or is not the boolean `true`. The status name and `closedAt` don't count | on real events it agrees with `casePrimaryStatusName(inputs) == 'closed'`. In test events, set `primaryStatus.isClosed: true` |
+| `isCaseClosed(inputs)` | reads only `case.primaryStatus.isClosed`: true on a real close event, false when that field is missing (as in most hand-made events) or is not the boolean `true`. The status name and `closedAt` don't count | it agreed with `casePrimaryStatusName(inputs) == 'closed'` on the measured close event, and `closed` was the test tenant's only status with `isClosed` true (`casePrimaryStatuses`). In test events, set `primaryStatus.isClosed: true` |
 | `list.slice(a, b)` past the end | error | `size(l) > n ? l.slice(0, n) : l` |
 | `1/0` | error "division by zero" | |
 | `size(list[?5])` | error: optional has no size | `.orValue(...)` first |

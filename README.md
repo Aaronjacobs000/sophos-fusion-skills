@@ -86,7 +86,7 @@ mkdir -p ~/.agents/skills
 for s in "$PWD"/sophos-fusion-skills/skills/*; do ln -s "$s" ~/.agents/skills/; done
 ```
 
-On Windows, Git Bash's `ln -s` makes copies by default. A copied skill can't reach the repository's `lib/` folder, so its scripts fail. Use directory junctions, which need no admin rights or Developer Mode. In Command Prompt (cmd.exe), from the folder that holds the clone:
+On Windows, Git Bash's `ln -s` makes copies by default. A copied skill can't reach the repository's `lib/` folder, so its scripts fail. Use directory junctions, which need no admin rights or Developer Mode. Paste these lines into Command Prompt (cmd.exe) in the folder that holds the clone:
 
 ```bat
 mkdir "%USERPROFILE%\.agents\skills"
