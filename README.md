@@ -86,6 +86,13 @@ mkdir -p ~/.agents/skills
 for s in "$PWD"/sophos-fusion-skills/skills/*; do ln -s "$s" ~/.agents/skills/; done
 ```
 
+On Windows, Git Bash's `ln -s` makes copies by default. A copied skill can't reach the repository's `lib/` folder, so its scripts fail. Use directory junctions, which need no admin rights or Developer Mode. In Command Prompt (cmd.exe), from the folder that holds the clone:
+
+```bat
+mkdir "%USERPROFILE%\.agents\skills"
+for /d %G in (sophos-fusion-skills\skills\*) do mklink /J "%USERPROFILE%\.agents\skills\%~nxG" "%~fG"
+```
+
 The scripts find their shared code through the links, so they run from there too. The skill names (`playbooks`, `setup`, `authoring`, and so on) are generic, so check for clashes with other skills in that folder.
 
 While the repository is private, your git client needs GitHub access. Run `gh auth login` and then `gh auth setup-git`. Claude Code tries SSH first; if you have no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
