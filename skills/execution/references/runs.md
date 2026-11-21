@@ -36,6 +36,8 @@
 
 A task with `nolog: true` has no values in its entry. Everything else stays in the log for good: deleting the instance or template does not remove it, and the API cannot.
 
+After a test run's instance and template were deleted, `playbookExecution` answered "PB21: record not found" for the run, while `playbookExecutionLogs` still returned its log (measured 21/11/2026). `diagnose` then works from the log alone and says so.
+
 ## A run started by the API
 
 `executePlaybookInstanceV2` takes the instance ID, `parameters` (they override the instance inputs, and are evaluated as templates), `targetResource` (required; an empty string works), and an optional `reason`. It returns the execution at once with state Started. Poll `playbookExecution` until a final state.

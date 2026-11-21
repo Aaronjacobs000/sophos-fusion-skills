@@ -168,6 +168,27 @@ describe('diagnosis', () => {
     assert.match(d.json.findings[1].message, /client ID in 4 place\(s\).*not a secret/);
   });
 
+  test('a run whose record is gone is diagnosed from its log', () => {
+    const logs = [
+      { taskID: 0, message: {} },
+      { taskID: 1, message: { task: 'post', status: { Completion: 'Failure', Error: 'no such key: outputs' }, request: { url: 'https://hooks.slack.com/services/T0/B0/abcdefgh' } } },
+    ];
+    const kinds = diagnose(null, logs).map((x) => x.kind);
+    assert.deepEqual(kinds, ['record_gone', 'failed_tasks', 'no_such_key', 'secret_in_log']);
+    assert.deepEqual(diagnose(null, []).map((x) => x.kind), ['not_found']);
+    // run.mjs diagnose reads the log even when Fusion answers PB21 for the run itself
+    const rules = [
+      ...authRules(),
+      { match: { op: 'playbookExecutionLogs' }, respond: { json: { data: { playbookExecutionLogs: logs } } } },
+      { match: { op: 'playbookExecution' }, respond: { json: { data: { playbookExecution: null }, errors: [{ message: 'PB21: Unable to get playbook execution: record not found', path: ['playbookExecution'] }] } } },
+    ];
+    // diagnose waits up to 15 s for a run that has just finished to show, so this test takes that long
+    const r = runScript('skills/execution/scripts/run.mjs', ['diagnose', '--execution', 'E1'], { rules });
+    assert.equal(r.status, 0, r.stdout);
+    assert.equal(r.json.execution, null);
+    assert.deepEqual(r.json.findings.map((x) => x.kind), ['record_gone', 'failed_tasks', 'no_such_key', 'secret_in_log']);
+  });
+
   test('the client secret in a log is still a secret', () => {
     const logs = [{ id: 'L0', taskID: 0, parentID: null, message: { inputs: { case: { createdById: FAKE.clientId, note: `oops ${FAKE.clientSecret}` } } }, createdAt: '2026-01-01T00:00:00Z' }];
     const rules = [...authRules(), { match: { op: 'playbookExecutionLogs' }, respond: { json: { data: { playbookExecutionLogs: logs } } } }];

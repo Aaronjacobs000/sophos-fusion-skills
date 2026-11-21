@@ -149,7 +149,8 @@ const spec = {
       options: { execution: { type: 'string', required: true, help: 'Execution ID' } },
       run: async (ctx, args) => {
         const e = await F.getExecutionSettled(ctx.client, args.execution, { full: true });
-        const logs = e ? await F.executionLogs(ctx.client, args.execution) : [];
+        // The log outlives the run record, which reads as not found after the instance and template are deleted
+        const logs = await F.executionLogs(ctx.client, args.execution);
         const failedEvents = (e?.events || []).filter((ev) => ['Failed', 'TimedOut', 'Canceled'].includes(ev.state)).map((ev) => ({ name: ev.name, state: ev.state, reason: ev.reason }));
         return { execution: e ? { id: e.id, state: e.state, outcomeStatus: e.outcomeStatus, outcomeMessage: e.outcomeMessage } : null, failedTasks: failedEvents, findings: diagnose(e, logs) };
       },

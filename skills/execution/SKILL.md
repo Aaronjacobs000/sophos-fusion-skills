@@ -55,6 +55,7 @@ node $R list --instance <id>
 - connection problems: missing, unbound, or rejected credentials.
 - REAUTH_REQUIRED, with the test twin route.
 - secret-looking strings in the log. They cannot be deleted: rotate the secret and add `nolog: true` to the step.
+- a run Fusion no longer returns, as after its instance and template are deleted. The log stays, so the findings come from it.
 - the API client ID in the log, listed apart as an identifier. Fusion records it as the creator or updater of what the credential changed. It is not a secret, so tell the user nothing needs rotating.
 
 ## Cancel (a write)
