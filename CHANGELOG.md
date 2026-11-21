@@ -15,7 +15,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - `profile.mjs add --prompt` ends at the first line, so a pasted secret that includes the Enter keystroke no longer keeps a trailing return or waits for a second Enter.
 - Ctrl-C at that prompt now exits. It used to print "Canceled" and then hang, because the terminal was left reading.
 - `tools/check-manifests.mjs` reads JPEG icon sizes, so a valid square JPEG icon for Claude Code passes. Formats it can't read, such as GIF or WebP, are named in the problem.
-- It also reads an SVG `viewBox` written in single quotes, which it used to report as unreadable.
+- It also reads an SVG `viewBox` written in single quotes or with spaces around `=`, which it used to report as unreadable.
 - The CEL reference had `isCaseClosed(inputs)` wrong. Measured on a real close event, it reads only `case.primaryStatus.isClosed`, so it is true on real events and false on test events that leave that field out. The example's sample event now carries it.
 - The README gives the Windows route for linking the skills: directory junctions from Command Prompt, because Git Bash's `ln -s` makes copies and a copied skill can't load the shared `lib/` code.
 

@@ -36,6 +36,7 @@ describe('image sizes', () => {
   test('reads an SVG viewBox in single quotes', () => {
     assert.deepEqual(imageSize(Buffer.from("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'></svg>")), { type: 'svg', width: 48, height: 48 });
     assert.deepEqual(imageSize(Buffer.from('<svg viewBox="0 0 48 48\'></svg>')), { type: 'svg', width: null, height: null }, 'mismatched quotes are not a viewBox');
+    assert.deepEqual(imageSize(Buffer.from('<svg viewBox = "0 0 48 48"></svg>')), { type: 'svg', width: 48, height: 48 }, 'XML allows spaces around =');
   });
 
   test('names formats it cannot read', () => {
