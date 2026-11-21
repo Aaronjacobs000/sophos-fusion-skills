@@ -2,6 +2,10 @@
 
 All notable changes to this project are listed here. Versions follow semantic versioning.
 
+## Unreleased
+
+- CI runs on Ubuntu while the repository is private and adds macOS and Windows once it is public. A manual run with `full_matrix` set adds them sooner.
+
 ## 0.1.0 (2026-11-21)
 
 First release.

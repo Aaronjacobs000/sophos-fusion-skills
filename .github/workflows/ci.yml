@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: Also run on macOS and Windows while the repository is private
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -11,14 +17,12 @@ permissions:
 jobs:
   test:
     name: Node ${{ matrix.node }} on ${{ matrix.os }}
-    # ubuntu-latest only while the repository is private: macOS and Windows
-    # runners use private-repository minutes much faster. When the repository
-    # goes public, add macos-latest and windows-latest to the os list below.
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        # ubuntu only while the repository is private; macOS and Windows join when it is public or a manual run sets full_matrix.
+        os: ${{ fromJSON((github.event.repository.visibility == 'public' || inputs.full_matrix) && '["ubuntu-latest", "macos-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
         node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +36,7 @@ jobs:
       - name: Manifest and skill checks
         run: node tools/check-manifests.mjs
       - name: Every script answers --help
+        shell: bash
         run: |
           for s in skills/*/scripts/*.mjs; do
             node "$s" --help > /dev/null

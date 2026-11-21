@@ -227,7 +227,7 @@ node skills/validation/scripts/validate.mjs all examples # offline checks of eve
 node tools/check-manifests.mjs                           # manifests and skill frontmatter
 ```
 
-CI runs all three on Node 22 and 24.
+CI runs all three on Node 22 and 24. While the repository is private, it runs on Ubuntu only. Once the repository is public, it also runs on macOS and Windows. A manual run with `full_matrix` set adds them sooner.
 
 `tools/live-smoke.mjs` runs against a real tenant on a profile marked `test`. It never runs in CI.
 
