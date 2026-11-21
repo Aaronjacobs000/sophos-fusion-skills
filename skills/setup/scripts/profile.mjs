@@ -151,7 +151,7 @@ target tenant on the profile (list them with "profile.mjs tenants").`,
             target,
             steps,
             ready: missing.length === 0,
-            ...(missing.length ? { missing, note: 'The credential lacks some automation permissions. Check its role on the Sophos Central API credentials page.' } : {}),
+            ...(missing.length ? { missing, note: 'The credential lacks some automation permissions. Check its role on the API Credentials page in Sophos Fusion.' } : {}),
           };
         } catch (error) {
           return { ok: false, profile: ctx.profile?.name, steps: error.steps || steps, error: { code: error.code || 'failed', message: error.message } };

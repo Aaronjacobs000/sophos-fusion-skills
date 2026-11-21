@@ -99,7 +99,7 @@ While the repository is private, your git client needs GitHub access. Run `gh au
 
 ## Connect a tenant
 
-You need a Sophos API credential (client ID and secret) from the Sophos Central API credentials page. A Super Admin role covers everything here.
+You need a Sophos API credential (client ID and secret). Create one on the API Credentials page in Sophos Fusion, under [Global Settings > Access Control](https://docs.sophos.com/fusion/customer/help/en-us/ManageYourProducts/GlobalSettings/AccessControl/APICredentials/). A Super Admin role covers everything here.
 
 Ask your agent to "set up Sophos Fusion credentials", or run this yourself:
 

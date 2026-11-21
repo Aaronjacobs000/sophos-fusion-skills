@@ -10,7 +10,7 @@ Scripts live in `${CLAUDE_SKILL_DIR}/scripts/`. If that shows literally, it mean
 
 ## What the person needs first
 
-A Sophos API credential (client ID and client secret) from the Sophos Central API credentials page. A Super Admin role works. The self-test lists what the credential can do.
+A Sophos API credential (client ID and client secret) from the API Credentials page in Sophos Fusion. A Super Admin role works. The self-test lists what the credential can do.
 
 ## Never handle the secret in chat
 

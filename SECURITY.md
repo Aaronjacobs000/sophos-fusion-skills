@@ -14,4 +14,4 @@ Out of scope: Sophos products and APIs. Report those to Sophos.
 
 ## If a secret leaks
 
-Rotate the Sophos API credential on the Sophos Central API credentials page. Fusion execution logs cannot be deleted, so a secret that reached a log stays there: rotation is the only fix.
+Rotate the Sophos API credential on the API Credentials page in Sophos Fusion. Fusion execution logs cannot be deleted, so a secret that reached a log stays there: rotation is the only fix.
