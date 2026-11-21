@@ -165,14 +165,14 @@ const spec = {
       summary: 'Cancel a run that is still going',
       write: true,
       options: { execution: { type: 'string', required: true, help: 'Execution ID' }, reason: { type: 'string', default: 'Canceled from the execution skill', help: 'Reason' } },
-      gateDescription: (args) => `cancelling execution ${args.execution}`,
+      gateDescription: (args) => `canceling execution ${args.execution}`,
       run: async (ctx, args) => {
         const r = await F.cancelExecutions(ctx.client, [args.execution], args.reason);
         const back = await F.pollUntil(async () => {
           const e = await F.getExecution(ctx.client, args.execution);
           return e && F.TERMINAL_STATES.includes(e.state) ? e : null;
         });
-        return { ok: back.ok, cancelled: r, state: back.value?.state ?? null };
+        return { ok: back.ok, canceled: r, state: back.value?.state ?? null };
       },
     },
   },
