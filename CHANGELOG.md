@@ -10,6 +10,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - The README shows the Sophos logo, with the white version in dark mode. The Claude Code, Codex, and Cursor manifests name an icon: a square PNG of the Sophos brandmark, with transparent padding, for Claude Code, and the brandmark SVG for Codex and Cursor. `tools/check-manifests.mjs` checks that each icon file exists and fits its format.
 - The Closed case detection note example ran live on a test case: one run and one comment, with the template and instance removed afterward.
 - `run.mjs logs` and `diagnose` list the API client ID apart, as an identifier, when an event in the log carries it, for example as a case's creator. Output shows it as `[client ID]`. Real secrets are still flagged wherever they sit.
+- Redaction also covers object keys, and registered values are replaced longest first, so one inside another can't leave part of it showing.
 - `run.mjs diagnose` reads the log of a run whose instance and template were deleted. Fusion answers "record not found" for such a run but keeps its log, and diagnose used to stop at "No execution with that ID", skipping the log and its secret check.
 - `profile.mjs add --prompt` ends at the first line, so a pasted secret that includes the Enter keystroke no longer keeps a trailing return or waits for a second Enter.
 - Ctrl-C at that prompt now exits. It used to print "Canceled" and then hang, because the terminal was left reading.

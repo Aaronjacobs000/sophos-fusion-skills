@@ -108,6 +108,16 @@ describe('the client ID in logs', () => {
     assert.equal(redactText('by 11111111-aaaa-4bbb-8ccc-222222222222, then 4bbb-8ccc'), 'by [client ID], then [redacted]');
   });
 
+  test('object keys are redacted and scanned like values', () => {
+    addSecret('the-real-client-secret');
+    addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
+    const logs = { byActor: { '11111111-aaaa-4bbb-8ccc-222222222222': { n: 1 }, 'the-real-client-secret': 'x' } };
+    assert.deepEqual(redact(logs), { byActor: { '[client ID]': { n: 1 }, '[redacted]': 'x' } });
+    assert.deepEqual(findLeaks(logs).map((l) => l.kind), ['known_secret']);
+    assert.match(findLeaks(logs)[0].path, /\(key\)$/);
+    assert.equal(findIdentifiers(logs).length, 1);
+  });
+
   test('is an identifier even when another path also registered it as a secret', () => {
     addSecret('11111111-aaaa-4bbb-8ccc-222222222222');
     addIdentifier('11111111-aaaa-4bbb-8ccc-222222222222', 'client ID');
