@@ -9,7 +9,7 @@
     {
       "name": "sophos-fusion-skills",
       "source": "./",
-      "description": "Author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent.",
+      "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent.",
       "version": "0.1.0",
       "category": "security",
       "tags": ["sophos", "fusion", "soar", "playbooks"]

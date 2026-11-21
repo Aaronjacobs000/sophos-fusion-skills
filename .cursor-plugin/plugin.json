@@ -1,6 +1,6 @@
 {
   "name": "sophos-fusion-skills",
-  "description": "Author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, with write confirmations and a rollback ledger.",
+  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, with write confirmations and a rollback ledger.",
   "version": "0.1.0",
   "author": {
     "name": "Aaron Jacobs"
