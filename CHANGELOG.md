@@ -14,6 +14,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - `profile.mjs add --prompt` ends at the first line, so a pasted secret that includes the Enter keystroke no longer keeps a trailing return or waits for a second Enter.
 - Ctrl-C at that prompt now exits. It used to print "Canceled" and then hang, because the terminal was left reading.
 - `tools/check-manifests.mjs` reads JPEG icon sizes, so a valid square JPEG icon for Claude Code passes. Formats it can't read, such as GIF or WebP, are named in the problem.
+- It also reads an SVG `viewBox` written in single quotes, which it used to report as unreadable.
 
 ## 0.1.0 (2026-11-21)
 
