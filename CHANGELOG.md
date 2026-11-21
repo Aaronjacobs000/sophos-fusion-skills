@@ -13,6 +13,7 @@ All notable changes to this project are listed here. Versions follow semantic ve
 - `run.mjs diagnose` reads the log of a run whose instance and template were deleted. Fusion answers "record not found" for such a run but keeps its log, and diagnose used to stop at "No execution with that ID", skipping the log and its secret check.
 - `profile.mjs add --prompt` ends at the first line, so a pasted secret that includes the Enter keystroke no longer keeps a trailing return or waits for a second Enter.
 - Ctrl-C at that prompt now exits. It used to print "Canceled" and then hang, because the terminal was left reading.
+- `tools/check-manifests.mjs` reads JPEG icon sizes, so a valid square JPEG icon for Claude Code passes. Formats it can't read, such as GIF or WebP, are named in the problem.
 
 ## 0.1.0 (2026-11-21)
 

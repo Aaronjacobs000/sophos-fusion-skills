@@ -2,3 +2,5 @@
 # tests, the fixtures, and what the tenant receives on import.
 * text=auto eol=lf
 *.png binary
+*.jpg binary
+*.jpeg binary
