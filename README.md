@@ -8,7 +8,7 @@
 
 # Sophos Fusion Skills
 
-[![Version](https://img.shields.io/badge/version-0.1.0-2f6fd6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.2.0-2f6fd6)](CHANGELOG.md)
 [![CI](https://github.com/Aaronjacobs000/sophos-fusion-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Aaronjacobs000/sophos-fusion-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -16,6 +16,8 @@
 > This is an unofficial project. Sophos did not make it and does not support it, so report problems here rather than to Sophos Support. Use it at your own risk, and try it on a non-production tenant first.
 
 Ask your coding agent for a Sophos Fusion playbook in plain words. These skills look up the real connectors, triggers, and CEL functions on your tenant, write the template, check it offline and on the tenant, import a test copy, run it, and read the log back to you. Every write waits for your yes, and everything a run creates can be rolled back.
+
+They also build custom parsers for Sophos NG-SIEM from your sample lines, and detection rules and an automatic case rule for those sources. Samples are masked and stay on your machine. Each parser and rule is tested offline, then in the tenant's own engine or Data Lake Search, before it is installed off.
 
 The skills call the Sophos Fusion API through small Node scripts in this repository. There is no MCP server and nothing to install beyond Node 22.
 
@@ -44,6 +46,8 @@ Plain requests work, and naming a skill is optional. A few prompts to try:
 - "Deploy this template to the lab tenant as a test copy and run it once."
 - "My playbook says Completed but nothing happened. Here's the execution ID."
 - "What verdict names does this tenant use for closed cases?"
+- "Here are some lines from our door access system. Build a parser for them and test it on the lab tenant."
+- "Add detection rules for failed admin logins on that parser's records, and one case per source IP."
 - "Remove everything you created in the last test."
 
 ## What happens when you ask
@@ -132,6 +136,8 @@ Any command also takes `--tenant <uuid>` for a single run. The scripts check the
 | `validation` | run offline rules, the tenant's DSL check, and CEL truth tables | `validate.mjs` |
 | `deployment` | import test copies, export and diff, create connections, disabled instances, filters, and schedules, enable or publish, list and export, roll back | `deploy.mjs`, `ledger.mjs` |
 | `execution` | run Generic Trigger instances, watch them, read logs, and diagnose failures | `run.mjs` |
+| `parsers` | mask samples, draft a custom parser, test it offline and in the tenant's engine, install it off, turn it on, confirm it on real ingest, and share it with the library | `parser.mjs` |
+| `detection-rules` | write custom detection rules for a custom parser's records, test them offline and in Data Lake Search, install them off, and add an automatic case rule in Test state | `rules.mjs`, `case-rule.mjs` |
 
 In Claude Code they appear as `sophos-fusion-skills:<skill>`.
 
@@ -145,12 +151,15 @@ flowchart LR
     pb --> va[validation]
     pb --> de[deployment]
     pb --> ex[execution]
+    pb --> ps[parsers]
+    pb --> dr[detection-rules]
     pb -.-> se[setup]
     subgraph scripts [Node scripts, no install]
-        au & cn & va & de & ex & se --> lib[lib/<br/>write gate, host allowlist,<br/>retries, ledger, CEL parser]
+        au & cn & va & de & ex & se & ps & dr --> lib[lib/<br/>write gate, host allowlist,<br/>retries, ledger, CEL parser]
+        ps & dr --> xsl[vendor/xdr-siem-library<br/>emulator, schemas, QL reader]
     end
     lib --> api[(Sophos APIs<br/>id, central, Fusion GraphQL)]
-    de --> led[(local ledger)]
+    de & ps & dr --> led[(local ledger)]
 ```
 
 ```
@@ -158,10 +167,11 @@ skills/<name>/SKILL.md     instructions the agent reads
 skills/<name>/scripts/     the commands it runs
 skills/<name>/references/  format and API notes for that phase
 lib/                       shared code: HTTP safety, auth, GraphQL, CLI, ledger, CEL, rules
-examples/                  three playbooks and a connector, each validated and tested
-tools/                     manifest check, live smoke test
+examples/                  three playbooks, a connector, a parser, a rule set and a case rule
+tools/                     manifest check, vendor sync and check, live smoke test
 test/                      unit tests with a scripted fetch, no credentials
 vendor/yaml/               the yaml parser (ISC), unmodified
+vendor/xdr-siem-library/   the library's emulator, schema data, rule query reader and parser generator (MIT), unmodified
 assets/                    the Sophos logo and the plugin icons
 ```
 
@@ -180,6 +190,9 @@ The safety rules live in the scripts, so they hold whichever assistant runs them
 - Only Sophos hosts. Requests go only to `id.sophos.com`, `api.central.sophos.com`, regional `api-<region>.central.sophos.com`, and `api.taegis.sophos.com`. Redirects are refused, and hosts named in Sophos's answers are checked before a token goes there.
 - Secrets stay out. Tokens and secrets are redacted from everything printed. Run parameters and connector test inputs that look like secrets are refused.
 - Response playbooks carry a dry run. The authoring rules and the validator require a `dry_run` input that defaults to true, a `max_` cap, and every changing action gated on it.
+- Parsers and detection rules install off, case rules in Test state. Turning each one on is its own write and its own yes, and the script says what changes first: a parser changes normalization tenant-wide at once, and detections and cases can't be deleted.
+- Samples stay local. Sample lines go into a private workspace outside any repository, the agent reads only a masked copy, and no command prints a sample value unless you ask. Library contributions need new synthetic samples and refuse lines copied from yours.
+- Tests before installs. A parser needs a passing check in the tenant's own engine on the same code within 24 hours before it goes on. A rule needs a 7-day Data Lake search test under 1,000 matches a day.
 
 ## Limits
 
@@ -191,6 +204,8 @@ Read these before you rely on the skills.
 - The automation API isn't in Sophos's public developer docs. The scripts call Sophos Fusion's GraphQL automation API, which can change without notice. Platform facts in the references were measured on 21/11/2026.
 - Fusion's own validator misses things. It only warns about syntax errors and undeclared references, and it lets through unknown action names, reads of skipped tasks, and reads of later tasks. The offline rules and the tenant check catch these, but not every runtime failure.
 - A case Update event is the only platform trigger tested live. Closing a test case ran the Closed case detection note example once and added one comment. Test any other event on a test case before you rely on it.
+- The parser and custom rule APIs are undocumented too, and `createParser` saves the console's template instead of the code sent, so install sends the code again and reads it back. The library's emulator is a reading of the docs, not the Sophos engine, so the tenant check compares the two on every line and the engine wins.
+- No children under built-in parsers, no Override Global Parser, no suppression, threshold, or IOC-only rules, and no partner-level case rules in this version. Lines that reached the tenant before a parser went on stay as they were.
 - Only Sophos may set some fields. Templates with `isProactiveResponse: true`, or the MDR and visibility flags, fail to import on a customer tenant. The validator flags them.
 
 ## Run the scripts by hand
@@ -230,8 +245,11 @@ Exit codes: 0 ok, 1 failed, 2 usage, 3 refused by the write gate.
 | [Closed case detection note](examples/playbooks/closed-case-detection-note/) | notify | case Update event |
 | [Block case IPs on Sophos Firewall](examples/playbooks/case-ip-threat-feed-block/) | response, dry run on | User Initiated, with a Generic Trigger twin |
 | [FIRST EPSS connector](examples/connectors/first-epss/) | connector | public API, no key |
+| [OpenCanary parsers](examples/parsers/opencanary/) | parser | parent and child, JSON over syslog |
+| [OpenCanary honeypot activity](examples/rules/opencanary-honeypot-activity/) | detection rules | four rules on the parser's Thirdparty records |
+| [OpenCanary, one case per source IP](examples/rules/opencanary-one-case-per-source-ip/) | case rule | Test state |
 
-Each one passes the offline rules and the tenant's DSL check, and has a CEL cases file that passes in Fusion's engine.
+Each playbook passes the offline rules and the tenant's DSL check, and has a CEL cases file that passes in Fusion's engine. The OpenCanary entries come from the Unofficial Sophos Fusion XDR and SIEM Library (MIT).
 
 ## Testing
 
@@ -239,17 +257,21 @@ Each one passes the offline rules and the tenant's DSL check, and has a CEL case
 node --test                                              # unit tests, fetch mocked, no credentials
 node skills/validation/scripts/validate.mjs all examples # offline checks of every example
 node tools/check-manifests.mjs                           # manifests and skill frontmatter
+node tools/check-vendor.mjs                              # the vendored library files against their pinned hashes
 ```
 
-CI runs all three on Node 22 and 24, on Ubuntu, macOS, and Windows.
+CI runs all four on Node 22 and 24, on Ubuntu, macOS, and Windows. A weekly job compares the vendored library files with the library's main branch and fails, with a file list, when they differ.
 
 `tools/live-smoke.mjs` runs against a real tenant on a profile marked `test`. It never runs in CI.
 
 - `--level read` covers the self-test, catalog reads, the tenant DSL check of every example, and every CEL cases file.
 - `--roundtrip --yes` adds one import, export and diff, and rollback.
 - `--level full --yes` runs the whole cycle: test-copy imports of all examples, a disabled instance, a lookup-only run with its log and diagnosis, a paused schedule, a disabled platform instance and its filter, the connector tested against a public API, and rollback. Object counts must match before and after.
+- `--suite parsers` and `--suite rules` test the two new skills instead: the read level runs the tenant checks, and the full level installs, reads back, turns each object on and off, and rolls back. Neither can send ingest, so `verify-ingest` and a rule firing stay manual lab steps.
 
 What has been run so far: the full cycle on an XDR test tenant in eu02, and the read and round-trip levels on an MDR tenant in us01, both on 21/11/2026, with counts unchanged afterward. On the XDR tenant, the Closed case detection note example also ran on a real test case: one run, one comment, and the template and instance removed afterward.
+
+The parsers and rules ran on the same XDR tenant on 22/11/2026: the OpenCanary tenant check matched the emulator on all 48 lines, the parsers installed off, went on, and normalized synthetic lines sent through a test HTTP Ingest integration with no field differences, the four rules installed off, search-tested in agreement with Data Lake, went on and each fired, and the case rule logged in Test state for a Medium detection. Both `--suite` levels passed, and parser, rule, case rule, template, and integration lists matched the baseline afterward.
 
 ## Troubleshooting
 
@@ -270,4 +292,4 @@ To report a bug or ask a question, open an issue with the command you ran and it
 
 For a release, bump the version in `lib/constants.mjs`, `package.json`, and every manifest. Then `tools/check-manifests.mjs` passes, the changelog gets an entry, and the tag is `v<version>`.
 
-Sophos and Sophos Fusion are trademarks of Sophos Ltd. The project is MIT licensed; see [LICENSE](LICENSE). The bundled yaml parser is ISC licensed.
+Sophos and Sophos Fusion are trademarks of Sophos Ltd. The project is MIT licensed; see [LICENSE](LICENSE). The bundled yaml parser is ISC licensed, and the vendored library code is MIT licensed, with its gitleaks port credited in `vendor/xdr-siem-library/ATTRIBUTIONS.md`.

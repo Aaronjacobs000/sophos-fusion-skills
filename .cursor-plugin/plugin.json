@@ -1,14 +1,14 @@
 {
   "name": "sophos-fusion-skills",
-  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, with write confirmations and a rollback ledger.",
-  "version": "0.1.0",
+  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, and to build custom parsers and detection rules, with write confirmations and a rollback ledger.",
+  "version": "0.2.0",
   "author": {
     "name": "Aaron Jacobs"
   },
   "homepage": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "repository": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "license": "MIT",
-  "keywords": ["sophos", "fusion", "soar", "playbooks"],
+  "keywords": ["sophos", "fusion", "soar", "playbooks", "parsers", "detection-rules"],
   "logo": "assets/sophos-icon-blue-white.svg",
   "skills": "./skills/"
 }

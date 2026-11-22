@@ -114,7 +114,7 @@ See [case-rules.md](references/case-rules.md) for the fields and the lab results
 node ${CLAUDE_SKILL_DIR}/../deployment/scripts/ledger.mjs rollback --yes
 ```
 
-Rollback deletes the case rule, then its template, then each detection rule (disabled, then hard deleted, falling back to a soft delete), and reads each one back. Detections, events and cases can't be deleted: list the cases the rules opened (`detections`) and leave closing them to the person.
+Rollback deletes the case rule, then its template, then each detection rule (disabled, then hard deleted, falling back to a soft delete), and reads each one back. A deleted rule kept firing on new events in the lab for at least two hours, so when the parser stays on, tell the person that detections can keep coming for a while. Detections, events and cases can't be deleted: list the cases the rules opened (`detections`) and leave closing them to the person.
 
 ## Share with the library (opt-in)
 

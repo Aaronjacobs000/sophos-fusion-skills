@@ -1,7 +1,7 @@
 {
   "name": "sophos-fusion-skills",
-  "version": "0.1.0",
-  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent, with local scripts, write confirmations, a rollback ledger, and test copies by default.",
+  "version": "0.2.0",
+  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, and to build custom parsers and detection rules for Sophos NG-SIEM, from a coding agent, with local scripts, write confirmations, a rollback ledger, and test copies by default.",
   "author": {
     "name": "Aaron Jacobs",
     "url": "https://github.com/Aaronjacobs000"
@@ -9,6 +9,6 @@
   "homepage": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "repository": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "license": "MIT",
-  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation", "cel", "security-operations"],
+  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation", "cel", "security-operations", "ng-siem", "parsers", "detection-rules"],
   "icon": "./assets/icon.png"
 }

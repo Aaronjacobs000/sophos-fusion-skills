@@ -1,7 +1,7 @@
 {
   "name": "sophos-fusion-skills",
-  "version": "0.1.0",
-  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, with write confirmations and a rollback ledger.",
+  "version": "0.2.0",
+  "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, and to build custom parsers and detection rules, with write confirmations and a rollback ledger.",
   "author": {
     "name": "Aaron Jacobs",
     "url": "https://github.com/Aaronjacobs000"
@@ -9,12 +9,12 @@
   "homepage": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "repository": "https://github.com/Aaronjacobs000/sophos-fusion-skills",
   "license": "MIT",
-  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation"],
+  "keywords": ["sophos", "fusion", "soar", "playbooks", "automation", "parsers", "detection-rules"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Sophos Fusion Skills",
     "shortDescription": "Build and test Sophos Fusion playbooks (unofficial)",
-    "longDescription": "Look up connectors, triggers, and CEL functions on a Sophos Fusion tenant, write playbook templates and custom connectors, validate them offline and on the tenant, import test copies, and run and diagnose playbooks. Every write asks first and can be rolled back. This is an unofficial project that Sophos does not support.",
+    "longDescription": "Look up connectors, triggers, and CEL functions on a Sophos Fusion tenant, write playbook templates and custom connectors, validate them offline and on the tenant, import test copies, run and diagnose playbooks, and build and test custom parsers and detection rules for Sophos NG-SIEM. Every write asks first and can be rolled back. This is an unofficial project that Sophos does not support.",
     "developerName": "Aaron Jacobs",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Write"],

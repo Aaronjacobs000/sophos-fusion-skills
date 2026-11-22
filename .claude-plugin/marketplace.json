@@ -1,6 +1,6 @@
 {
   "name": "sophos-fusion-skills",
-  "description": "Unofficial agent skills for Sophos Fusion playbooks and connectors.",
+  "description": "Unofficial agent skills for Sophos Fusion playbooks, connectors, custom parsers, and detection rules.",
   "owner": {
     "name": "Aaron Jacobs",
     "url": "https://github.com/Aaronjacobs000"
@@ -9,8 +9,8 @@
     {
       "name": "sophos-fusion-skills",
       "source": "./",
-      "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors from a coding agent.",
-      "version": "0.1.0",
+      "description": "Unofficial skills to author, validate, deploy, and run Sophos Fusion playbooks and custom connectors, and to build custom parsers and detection rules, from a coding agent.",
+      "version": "0.2.0",
       "category": "security",
       "tags": ["sophos", "fusion", "soar", "playbooks"]
     }

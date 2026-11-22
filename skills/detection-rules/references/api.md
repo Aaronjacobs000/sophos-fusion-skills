@@ -44,3 +44,5 @@ Each custom detection carries the tag `alertRule:<rule id>` and the rule's name 
 ## deleteRule
 
 `deleteRule(ruleID, hard: true)` after `disableRule`; when the hard delete errors, a soft delete. A soft-deleted rule reads back with `deleted: true`, which rollback counts as gone. Detections stay.
+
+A rule that reads as gone can still fire. On 22/11/2026, four rules disabled and hard deleted about two hours earlier made detections, under their old rule IDs, on new matching events at the same moments as their live copies. So the read-back proves the API no longer has the rule, not that the detection engine stopped using it. Rollback also deletes the parsers, so the events those rules match stop arriving.

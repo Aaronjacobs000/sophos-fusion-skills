@@ -11,7 +11,7 @@ All calls go to the Sophos Fusion GraphQL endpoint (`https://api.taegis.sophos.c
 | `parserSchemas` | schemas the tenant takes | 18 on 22/11/2026, including `xdr.findings.detectionfinding`. |
 | `validateParser(unvalidatedParser: {code, parentId, name})` | syntax in the real engine | Answers `{ok, message}`; the message names the line and column. Saves nothing. |
 | `sampleParser(messages, parser, runDisabled)` | run lines in the real engine | Saves nothing ("Testing does not save the script", per the docs). `results { schema extractors errors fields variables }`, with `fields` as `[{destination, value}]` and enums as numbers. |
-| `createSearch`, `search`, `searchResults` | Data Lake Search | `createSearch` is a mutation that changes no configuration: no `--yes`, and never resent after a 5xx. |
+| `createSearch`, `search`, `searchResults` | Data Lake Search | `createSearch` is a mutation that changes no configuration: no `--yes`, and never resent after a 5xx. A search over two schemas (`from generic, thirdparty`) returned only the columns they share (22/11/2026), so `verify-ingest` searches each schema on its own. `earliest` bounds the event time, not the ingest time. |
 
 Measured on 22/11/2026:
 

@@ -2,7 +2,20 @@
 
 All notable changes to this project are listed here. Versions follow semantic versioning.
 
-## Unreleased
+## 0.2.0 (2026-11-22)
+
+Two new skills, for Sophos NG-SIEM custom parsers and the detection rules that use them.
+
+- `parsers`: sample lines go into a private workspace outside any repository and are masked before the agent reads them. `parser.mjs` drafts a parser with the library's generator, checks it offline on the vendored emulator (lint, every line, `expected.json`), then read-only in the tenant's own engine (`parserSchemas`, `validateParser`, built-in parsers that already take the lines, and every line engine against emulator, field by field). `install` creates the parsers disabled as `ZZTest_` copies, parent first, and sends the code again with `updateParser`, because `createParser` saves the console's template instead. `enable` is its own write and needs a passing tenant check on the same code within 24 hours. `verify-ingest` reruns the parsers on real Data Lake records and compares fields. `contribute` builds a library entry from new synthetic samples and refuses lines copied from the user's.
+- `detection-rules`: `rules.mjs` scaffolds a rule set for a parser folder, checks it offline on the parser's own samples (fields, enums, regex limits, the sensor type pin, no IOC-only rules, and `tests.json`), runs `validateQLFilter` and reads Sophos's own rules on the schema, search-tests each query in Data Lake against the rules run offline on the same records with matches per day, installs rules off as `ZZ Test` copies with `createAlert` on, and enables one rule at a time under a 1,000-a-day volume check. `case-rule.mjs` scaffolds and checks an automatic case rule for the set, installs it in Test state (import, then one more save), reads its Rule Logs, and sets Enabled or Test as their own writes.
+- The ledger has four new kinds: `parser`, `detectionRule`, `caseRule` and `caseTemplate`. Rollback deletes a case rule before its template and both before the detection rules, disables parsers and rules before deleting them, and deletes child parsers before their parent. A parser counts as gone only when a parser list read without error lacks it.
+- `lib/search.mjs` runs Data Lake searches. `createSearch` needs no `--yes` (it changes no configuration) and is never sent twice for one search.
+- The library's `studio/core` and `studio/app/plan.js` are vendored unmodified in `vendor/xdr-siem-library`, pinned to library commit 343762c, with a sha256 per file in `VENDORED.md`. `tools/sync-library.mjs` re-syncs them from a clone, `tools/check-vendor.mjs` checks the hashes in CI, and a weekly workflow fails when the library's main branch differs.
+- Examples: the library's OpenCanary parsers (with a `test-confirms.json` for the flattened child), its four OpenCanary detection rules, and its one-case-per-source-IP case rule.
+- `validate.mjs all` also checks parser and rule folders. `profile.mjs test` reports whether custom parsers and rules can be read. `tools/live-smoke.mjs --suite parsers|rules` runs the new cycles on a test tenant.
+- String options take values that start with a dash, so `--earliest -7d` works as well as `--earliest=-7d`.
+
+### Other changes since 0.1.0
 
 - CI runs on Ubuntu while the repository is private and adds macOS and Windows once it is public. A manual run with `full_matrix` set adds them sooner.
 - Windows: profile and ledger writes retry a rename that Windows refuses while another process holds the file, and the ledger lock waits while Windows finishes removing the old lock folder. Files saved with CRLF line endings validate the same as LF files, and `.gitattributes` checks text files out with LF.

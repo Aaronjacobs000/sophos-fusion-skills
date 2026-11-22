@@ -1,7 +1,7 @@
 {
   "name": "sophos-fusion-skills",
-  "version": "0.1.0",
-  "description": "Unofficial agent skills for authoring, validating, deploying, and running Sophos Fusion playbooks and custom connectors.",
+  "version": "0.2.0",
+  "description": "Unofficial agent skills for authoring, validating, deploying, and running Sophos Fusion playbooks and custom connectors, and for building custom parsers and detection rules.",
   "private": true,
   "type": "module",
   "license": "MIT",
