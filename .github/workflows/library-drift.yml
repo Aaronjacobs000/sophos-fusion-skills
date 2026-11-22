@@ -1,0 +1,26 @@
+name: Library drift
+
+# Weekly: compares vendor/xdr-siem-library with the main branch of the Unofficial Sophos Fusion
+# XDR and SIEM Library and fails, with the files that differ, when the library has moved on.
+# GitHub emails the owner about a failed scheduled run. Nothing is posted.
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Clone the library's main branch
+        run: git clone --depth 1 https://github.com/Aaronjacobs000/sophos-xdr-siem-library.git "$RUNNER_TEMP/library"
+      - name: Compare the vendored files
+        run: node tools/check-vendor.mjs --library "$RUNNER_TEMP/library"

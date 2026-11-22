@@ -35,6 +35,8 @@ jobs:
         run: node skills/validation/scripts/validate.mjs all examples --quiet
       - name: Manifest and skill checks
         run: node tools/check-manifests.mjs
+      - name: Vendored library files match their pinned hashes
+        run: node tools/check-vendor.mjs
       - name: Every script answers --help
         shell: bash
         run: |
