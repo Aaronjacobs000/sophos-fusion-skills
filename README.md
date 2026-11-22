@@ -95,8 +95,6 @@ for /d %G in (sophos-fusion-skills\skills\*) do mklink /J "%USERPROFILE%\.agents
 
 The scripts find their shared code through the links, so they run from there too. The skill names (`playbooks`, `setup`, `authoring`, and so on) are generic, so check for clashes with other skills in that folder.
 
-While the repository is private, your git client needs GitHub access. Run `gh auth login` and then `gh auth setup-git`. Claude Code tries SSH first; if you have no SSH key for GitHub, set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
-
 ## Connect a tenant
 
 You need a Sophos API credential (client ID and secret). Create one on the API Credentials page in Sophos Fusion, under [Global Settings > Access Control](https://docs.sophos.com/fusion/customer/help/en-us/ManageYourProducts/GlobalSettings/AccessControl/APICredentials/). A Super Admin role covers everything here.
@@ -243,7 +241,7 @@ node skills/validation/scripts/validate.mjs all examples # offline checks of eve
 node tools/check-manifests.mjs                           # manifests and skill frontmatter
 ```
 
-CI runs all three on Node 22 and 24. While the repository is private, it runs on Ubuntu only. Once the repository is public, it also runs on macOS and Windows. A manual run with `full_matrix` set adds them sooner.
+CI runs all three on Node 22 and 24, on Ubuntu, macOS, and Windows.
 
 `tools/live-smoke.mjs` runs against a real tenant on a profile marked `test`. It never runs in CI.
 
