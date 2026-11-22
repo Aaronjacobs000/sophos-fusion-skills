@@ -1,0 +1,7 @@
+rules:
+  - name: Backreference
+    description: A test rule.
+    severity: high
+    mitre: [T1110]
+    enabled_by_default: true
+    query: "from thirdparty where sensor_type = 'OpenCanary' and title matches_regex '(a)\\1'"

@@ -13,6 +13,9 @@ import { loadCases, offlineCheck, runCases, truthTable } from '../../../lib/cel-
 import { getConnector, validateConnectionInput } from '../../../lib/fusion.mjs';
 import { log } from '../../../lib/log.mjs';
 import { addSecret } from '../../../lib/redact.mjs';
+import { checkFolder, loadParserFolder } from '../../../lib/parsers.mjs';
+import { loadRuleFolder, parsedRules, validateRuleEntry } from '../../../lib/detection-rules-check.mjs';
+import { RULE_PATH, PARSER_PATH, slug } from '../../../lib/xsl.mjs';
 
 function readJsonArg(value, label) {
   if (value === undefined) return undefined;
@@ -24,10 +27,27 @@ function readJsonArg(value, label) {
   }
 }
 
-/** Every template, connector and cases file under a folder. */
+/** What a folder's meta.json makes it: a parser folder, a rule set or case rule folder, or neither. */
+function folderKind(d) {
+  const file = path.join(d, 'meta.json');
+  if (!fs.existsSync(file)) return null;
+  try {
+    const meta = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (meta && (meta.kind === 'detection' || meta.kind === 'case')) return 'rules';
+    if (meta && Array.isArray(meta.parsers)) return 'parser';
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** Every template, connector and cases file under a folder, and every parser and rule folder. */
 function collect(dir) {
-  const out = { yaml: [], cases: [] };
+  const out = { yaml: [], cases: [], parsers: [], rules: [] };
   const walk = (d) => {
+    const kind = folderKind(d);
+    if (kind === 'parser') return out.parsers.push(d);
+    if (kind === 'rules') return out.rules.push(d);
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name.startsWith('.') || e.name === 'node_modules') continue;
       const p = path.join(d, e.name);
@@ -37,7 +57,52 @@ function collect(dir) {
     }
   };
   walk(dir);
-  return { yaml: out.yaml.sort(), cases: out.cases.sort() };
+  return { yaml: out.yaml.sort(), cases: out.cases.sort(), parsers: out.parsers.sort(), rules: out.rules.sort() };
+}
+
+/** The parser folder a rule set needs: its meta.json parser as a folder, or a parser folder with the same vendor and product. */
+function parserFor(meta, ruleDir, parserDirs) {
+  if (typeof meta?.parser === 'string' && !PARSER_PATH.test(meta.parser) && fs.existsSync(path.resolve(ruleDir, meta.parser))) return path.resolve(ruleDir, meta.parser);
+  return parserDirs.find((d) => {
+    try {
+      const m = JSON.parse(fs.readFileSync(path.join(d, 'meta.json'), 'utf8'));
+      return `parsers/${slug(m.vendor)}/${slug(m.product)}` === meta?.parser;
+    } catch {
+      return false;
+    }
+  }) ?? null;
+}
+
+/** The parser checks and the rule checks for the folders collect() found. */
+function parserAndRuleChecks(found) {
+  const parsers = found.parsers.map((d) => {
+    try {
+      const r = checkFolder(loadParserFolder(d));
+      return { folder: d, ok: r.ok, errors: r.errors, warnings: r.warnings, expected: r.expected, problems: r.problems.filter((p) => p.level === 'error' || p.level === 'warning') };
+    } catch (error) {
+      return { folder: d, ok: false, error: error.message };
+    }
+  });
+  const loaded = found.rules.map((d) => ({ dir: d, entry: loadRuleFolder(d) }));
+  const rules = loaded.map(({ dir, entry }) => {
+    try {
+      const opts = {};
+      if (entry.meta?.kind === 'detection') {
+        const p = parserFor(entry.meta, dir, found.parsers);
+        if (!p) return { folder: dir, kind: 'detection', ok: false, error: `No parser folder for ${entry.meta.parser} under the folder checked.` };
+        opts.parser = loadParserFolder(p);
+      } else if (entry.meta?.kind === 'case') {
+        const link = entry.meta?.links?.detection_rules;
+        const det = loaded.find((x) => x.entry.meta?.kind === 'detection' && (path.resolve(dir, String(link)) === x.dir || (RULE_PATH.test(String(link)) && `rules/${x.entry.id}` === link)));
+        if (det) opts.detection = { label: path.basename(det.dir), rules: parsedRules(det.entry) || [] };
+      }
+      const r = validateRuleEntry(entry, opts);
+      return { folder: dir, kind: entry.meta?.kind, ok: r.ok, errors: r.problems.filter((p) => p.level === 'error').length, problems: r.problems.filter((p) => p.level === 'error' || p.level === 'warning') };
+    } catch (error) {
+      return { folder: dir, ok: false, error: error.message };
+    }
+  });
+  return { parsers, rules };
 }
 
 function offline(files, strict) {
@@ -128,7 +193,7 @@ const spec = {
       },
     },
     all: {
-      summary: 'Offline checks for every template and connector under a folder, and parse checks for every CEL cases file',
+      summary: 'Offline checks for every template, connector, parser folder and rule folder under a folder, and parse checks for every CEL cases file',
       args: '<folder>',
       minPositionals: 1,
       options: { strict: { type: 'boolean', help: 'Treat warnings as failures' } },
@@ -143,8 +208,10 @@ const spec = {
             return { file: f, ok: false, error: error.message };
           }
         });
-        const ok = yaml.ok && cases.every((c) => c.ok);
-        return { ok, folder: dir, templatesAndConnectors: { files: yaml.files, errors: yaml.errors, warnings: yaml.warnings, results: yaml.results.map((r) => ({ file: r.file, kind: r.kind, name: r.name, ok: r.ok, errors: r.errors, warnings: r.warnings, findings: r.findings })) }, celCases: cases };
+        const pr = parserAndRuleChecks(found);
+        for (const x of [...pr.parsers, ...pr.rules].filter((r) => !r.ok)) log(`ERROR ${x.folder}: ${x.error || `${x.errors} errors`}`);
+        const ok = yaml.ok && cases.every((c) => c.ok) && pr.parsers.every((p) => p.ok) && pr.rules.every((r) => r.ok);
+        return { ok, folder: dir, templatesAndConnectors: { files: yaml.files, errors: yaml.errors, warnings: yaml.warnings, results: yaml.results.map((r) => ({ file: r.file, kind: r.kind, name: r.name, ok: r.ok, errors: r.errors, warnings: r.warnings, findings: r.findings })) }, celCases: cases, parsers: pr.parsers, rules: pr.rules };
       },
     },
   },

@@ -1,0 +1,3 @@
+{
+  "OPENCANARY_JSON_CHILD_THIRDPARTYALERT": "\"logtype\"\\s*:\\s*(?:[2-9]\\d{3}|[1-9]\\d{4,5})\\s*,.*\"node_id\"\\s*:|\"node_id\"\\s*:.*\"logtype\"\\s*:\\s*(?:[2-9]\\d{3}|[1-9]\\d{4,5})\\b"
+}

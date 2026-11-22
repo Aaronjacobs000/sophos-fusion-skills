@@ -6,8 +6,47 @@ import { main } from '../../../lib/cli.mjs';
 import { SfsError, UsageError } from '../../../lib/errors.mjs';
 import { ledgerPath, liveObjects, markObject, readLedger, rollbackOrder, startRun } from '../../../lib/ledger.mjs';
 import * as F from '../../../lib/fusion.mjs';
+import { findParser, removeParser } from '../../../lib/parsers.mjs';
+import { readLiveRule, removeRule } from '../../../lib/detection-rules.mjs';
+import { deleteCaseRule, deleteCaseTemplate, getCaseRule, getCaseTemplate } from '../../../lib/case-rules.mjs';
 import { log } from '../../../lib/log.mjs';
 import { redactText } from '../../../lib/redact.mjs';
+
+// How rollback reads and removes each kind. Parsers and detection rules go off before they are
+// deleted. A parser counts as gone only when a parser list read without error lacks it: reading a
+// deleted parser by ID answers "Internal server error", the same as a failed read.
+const HANDLERS = {
+  parser: {
+    read: (client, id) => findParser(client, id),
+    remove: async (client, id) => removeParser(client, id),
+  },
+  detectionRule: {
+    read: (client, id) => readLiveRule(client, id),
+    remove: async (client, id) => removeRule(client, id),
+  },
+  caseRule: {
+    read: (client, id) => getCaseRule(client, { id: String(id) }),
+    remove: async (client, id) => {
+      await deleteCaseRule(client, String(id));
+      return F.pollUntil(async () => !(await getCaseRule(client, { id: String(id) })));
+    },
+  },
+  caseTemplate: {
+    read: (client, id) => getCaseTemplate(client, { id: String(id) }),
+    remove: async (client, id) => {
+      await deleteCaseTemplate(client, String(id));
+      return F.pollUntil(async () => !(await getCaseTemplate(client, { id: String(id) })));
+    },
+  },
+};
+
+const readAny = (client, kind, id) => (HANDLERS[kind] ? HANDLERS[kind].read(client, id) : F.readObject(client, kind, id));
+
+async function removeAny(client, kind, id) {
+  if (HANDLERS[kind]) return HANDLERS[kind].remove(client, id);
+  await F.deleteObject(client, kind, id);
+  return F.pollUntil(async () => !(await F.readObject(client, kind, id)));
+}
 
 function pickRun(ledger, runId) {
   const id = runId || ledger.currentRun;
@@ -70,7 +109,7 @@ const spec = {
         const results = [];
         for (const o of order) {
           try {
-            const before = await F.readObject(ctx.client, o.kind, o.id);
+            const before = await readAny(ctx.client, o.kind, o.id);
             if (!before) {
               markObject(run.id, o.seq, 'gone', 'not on the tenant at rollback', ctx.env);
               results.push({ seq: o.seq, kind: o.kind, name: o.name, result: 'already gone' });
@@ -81,8 +120,7 @@ const spec = {
               results.push({ seq: o.seq, kind: o.kind, name: o.name, result: 'skipped', reason: `Its name is now "${before.name}", not the recorded "${o.name}". Check it by hand.` });
               continue;
             }
-            await F.deleteObject(ctx.client, o.kind, o.id);
-            const gone = await F.pollUntil(async () => !(await F.readObject(ctx.client, o.kind, o.id)));
+            const gone = await removeAny(ctx.client, o.kind, o.id);
             markObject(run.id, o.seq, gone.ok ? 'deleted' : 'delete_failed', gone.ok ? null : 'still readable 30 s after delete', ctx.env);
             results.push({ seq: o.seq, kind: o.kind, name: o.name, result: gone.ok ? 'deleted' : 'still there', waitedMs: gone.waitedMs });
             log(`${gone.ok ? 'deleted' : 'NOT deleted'}: ${o.kind} ${o.name}`);

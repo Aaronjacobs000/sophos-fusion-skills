@@ -1,0 +1,7 @@
+rules:
+  - name: No sensor pin
+    description: A test rule.
+    severity: high
+    mitre: [T1110]
+    enabled_by_default: true
+    query: "from thirdparty where alert_category = 'Login attempt'"

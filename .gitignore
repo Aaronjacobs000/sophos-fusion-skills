@@ -1,6 +1,9 @@
 node_modules/
 .DS_Store
 *.log
+# Example and fixture sample lines are synthetic and belong in the repo
+!examples/**/samples.log
+!test/fixtures/**/*.log
 .env
 .env.*
 test/.tmp-*

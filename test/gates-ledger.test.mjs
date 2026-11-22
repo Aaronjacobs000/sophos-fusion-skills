@@ -48,6 +48,24 @@ describe('the write gate', () => {
   });
 });
 
+describe('option values that start with a dash', () => {
+  test('a relative time after a string option is its value, not another option', async () => {
+    let got;
+    const spec = { name: 't.mjs', summary: 's', subcommands: { go: { summary: 'x', options: { earliest: { type: 'string' }, quiet2: { type: 'boolean' } }, run: async (ctx, a) => { got = a.earliest; return {}; } } } };
+    const write = process.stdout.write;
+    process.stdout.write = () => true;
+    try {
+      assert.equal(await runCli(spec, ['go', '--earliest', '-7d']), 0);
+      assert.equal(got, '-7d');
+      assert.equal(await runCli(spec, ['go', '--earliest=-24h']), 0);
+      assert.equal(got, '-24h');
+      assert.equal(await runCli(spec, ['go', '--earliest', '--quiet2']), 2, 'a flag is still not taken as a value');
+    } finally {
+      process.stdout.write = write;
+    }
+  });
+});
+
 describe('the gate in the real scripts sends nothing', () => {
   const writes = [
     ['skills/deployment/scripts/deploy.mjs', ['import', 'examples/playbooks/case-reference-lookup/template.yaml']],
@@ -61,6 +79,9 @@ describe('the gate in the real scripts sends nothing', () => {
     ['skills/execution/scripts/run.mjs', ['cancel', '--execution', 'abc']],
     ['skills/connectors/scripts/connector.mjs', ['test-action', '--connection', 'abc', '--action', 'validate']],
     ['skills/validation/scripts/validate.mjs', ['connection', '--connector', 'X']],
+    ['skills/parsers/scripts/parser.mjs', ['install', 'examples/parsers/opencanary']],
+    ['skills/detection-rules/scripts/rules.mjs', ['install', 'examples/rules/opencanary-honeypot-activity', '--parser', 'examples/parsers/opencanary']],
+    ['skills/detection-rules/scripts/case-rule.mjs', ['install', 'examples/rules/opencanary-one-case-per-source-ip']],
   ];
 
   for (const [script, args] of writes) {

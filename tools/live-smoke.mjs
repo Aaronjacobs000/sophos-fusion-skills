@@ -4,6 +4,7 @@
 //   node tools/live-smoke.mjs --profile lab --level read
 //   node tools/live-smoke.mjs --profile lab --level read --roundtrip --yes
 //   node tools/live-smoke.mjs --profile lab --level full --yes
+//   node tools/live-smoke.mjs --profile lab --suite parsers|rules [--level full --yes]
 //
 // read:      self-test, catalog reads, tenant DSL check of every example, CEL cases. No writes.
 // roundtrip: adds one test-copy import, export-and-diff, and rollback.
@@ -11,6 +12,10 @@
 //            one lookup-only run, a paused schedule, a disabled platform instance and its
 //            filter, a connector test against a public API, rollback, and counts before
 //            and after.
+// --suite parsers: the OpenCanary parsers' tenant check (read); install, read back, enable,
+//            disable and rollback (full). --suite rules: the OpenCanary rules' checks, tenant
+//            check and search test (read); install off, enable and disable one rule, the case
+//            rule in Test state, and rollback (full). Neither sends ingest.
 //
 // Only a profile marked test is accepted. Writes need --yes. It drives the real
 // CLI scripts, so it tests what the skills run.
@@ -32,12 +37,16 @@ const LEDGER = S('deployment', 'ledger.mjs');
 const RUN = S('execution', 'run.mjs');
 const CONNECTOR = S('connectors', 'connector.mjs');
 const EX = (p) => path.join(ROOT, 'examples', p);
+const PARSER = S('parsers', 'parser.mjs');
+const RULES = S('detection-rules', 'rules.mjs');
+const CASE_RULE = S('detection-rules', 'case-rule.mjs');
 
 const { values: args } = parseArgs({
   options: {
     profile: { type: 'string' },
     tenant: { type: 'string' },
     level: { type: 'string', default: 'read' },
+    suite: { type: 'string', default: 'playbooks' },
     roundtrip: { type: 'boolean' },
     yes: { type: 'boolean' },
     out: { type: 'string' },
@@ -46,7 +55,7 @@ const { values: args } = parseArgs({
 });
 
 if (args.help) {
-  process.stdout.write(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 17).map((l) => l.replace(/^\/\/ ?/, '')).join('\n') + '\n');
+  process.stdout.write(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 22).map((l) => l.replace(/^\/\/ ?/, '')).join('\n') + '\n');
   process.exit(0);
 }
 
@@ -104,6 +113,10 @@ if (!['read', 'full'].includes(args.level)) {
   process.stderr.write('--level must be read or full.\n');
   process.exit(2);
 }
+if (!['playbooks', 'parsers', 'rules'].includes(args.suite)) {
+  process.stderr.write('--suite must be playbooks, parsers or rules.\n');
+  process.exit(2);
+}
 
 // ---------------------------------------------------------------- read level
 
@@ -111,6 +124,11 @@ const self = step('self-test (token, whoami, counts, permissions)', ['oauth2 tok
 const tenant = self.json?.target ?? null;
 if (!self.ok) {
   finish({ tenant });
+  process.exit();
+}
+
+if (args.suite !== 'playbooks') {
+  runSuite(args.suite);
   process.exit();
 }
 
@@ -198,3 +216,51 @@ const ledger = step('ledger run is empty', [], LEDGER, ['show', '--run', run], {
 const same = before && after && JSON.stringify(before) === JSON.stringify(after);
 steps.push({ step: 'counts match', operations: [], ok: Boolean(same) });
 finish({ tenant, runId: run, countsBefore: before, countsAfter: after, ledgerLive: ledger?.live ?? null, rollback: rb.json?.results?.map((r) => ({ kind: r.kind, name: r.name, result: r.result })) });
+
+// ---------------------------------------------------------------- parsers and rules suites
+
+function countsMatch(name, before, after) {
+  const same = before && after && JSON.stringify(before) === JSON.stringify(after);
+  steps.push({ step: name, operations: [], ok: Boolean(same) });
+}
+
+function runSuite(suite) {
+  const pdir = EX('parsers/opencanary');
+  const rdir = EX('rules/opencanary-honeypot-activity');
+  const cdir = EX('rules/opencanary-one-case-per-source-ip');
+  if (suite === 'parsers') {
+    step('parser check (offline)', [], PARSER, ['check', pdir], {}, (j) => j.ok && j.errors === 0 && j.expected.matches);
+    step('parser tenant check', ['parserSchemas', 'allParsers', 'validateParser', 'sampleParser'], PARSER, ['tenant-check', pdir], {}, (j) => j.ok && j.lines.every((l) => l.routeOk));
+    if (!writes) return finish({ tenant, suite });
+    const before = step('parser counts before', ['allParsers'], PARSER, ['counts']).json?.counts;
+    const run = step('ledger: start run', [], LEDGER, ['start', '--label', 'live smoke parsers'], {}, (j) => j.ok && j.started?.id).json?.started?.id;
+    const inst = step('install the parsers, disabled', ['allParsers', 'createParser', 'parser (read back)', 'updateParser (code)'], PARSER, ['install', pdir, '--run-id', run], { write: true }, (j) => j.ok && j.installed.every((x) => x.readBack.code && x.readBack.disabled));
+    const ids = (inst.json?.installed || []).map((x) => x.id);
+    for (const id of ids) step(`enable parser ${id}`, ['parser', 'updateParser (disabled false)'], PARSER, ['enable', '--id', String(id)], { write: true }, (j) => j.ok && j.enabled === true);
+    for (const id of ids.slice().reverse()) step(`disable parser ${id}`, ['allParsers', 'updateParser (disabled true)'], PARSER, ['disable', '--id', String(id)], { write: true }, (j) => j.ok && j.enabled === false);
+    const rb = step('rollback', ['allParsers', 'updateParser', 'deleteParser'], LEDGER, ['rollback', '--run', run], { write: true }, (j) => j.ok && j.remaining === 0);
+    const after = step('parser counts after', ['allParsers'], PARSER, ['counts']).json?.counts;
+    countsMatch('parser counts match', before, after);
+    return finish({ tenant, suite, runId: run, countsBefore: before, countsAfter: after, rollback: rb.json?.results?.map((r) => ({ kind: r.kind, name: r.name, result: r.result })) });
+  }
+  step('rule check (offline)', [], RULES, ['check', rdir, '--parser', pdir], {}, (j) => j.ok && j.errors === 0);
+  step('case rule check (offline)', [], CASE_RULE, ['check', cdir], {}, (j) => j.ok && j.errors === 0);
+  step('rule tenant check', ['validateQLFilter', 'searchRules'], RULES, ['tenant-check', rdir], {}, (j) => j.ok);
+  const search = step('rule search test (7 days)', ['createSearch', 'search', 'searchResults'], RULES, ['search-test', rdir], {}, (j) => j.ok || j.error?.code === 'no_records');
+  steps[steps.length - 1].note = search.json?.records ? `${search.json.records} records` : 'no records of the sensor type: nothing to test against';
+  if (!writes) return finish({ tenant, suite });
+  const before = { rules: step('rule counts before', ['rules'], RULES, ['counts']).json?.counts, cases: step('case rule counts before', ['caseRules', 'caseTemplates'], CASE_RULE, ['counts']).json?.counts };
+  const run = step('ledger: start run', [], LEDGER, ['start', '--label', 'live smoke rules'], {}, (j) => j.ok && j.started?.id).json?.started?.id;
+  const inst = step('install the rules, off', ['rules', 'validateQLFilter', 'createCustomQLRule', 'rule (read back)'], RULES, ['install', rdir, '--parser', pdir, '--run-id', run], { write: true }, (j) => j.ok && j.installed.every((x) => x.readBack.enabled === false && x.readBack.createAlert === true));
+  const first = inst.json?.installed?.[0]?.id;
+  if (first) {
+    step('enable one rule', ['rule', 'enableRule'], RULES, ['enable', '--id', first, '--allow-volume'], { write: true }, (j) => j.ok && j.enabled === true);
+    step('disable it again', ['rule', 'disableRule'], RULES, ['disable', '--id', first], { write: true }, (j) => j.ok && j.enabled === false);
+  }
+  const cr = step('install the case rule in Test state', ['caseRules', 'caseTemplate', 'importInvestigationResources', 'caseRule', 'updateCaseRule'], CASE_RULE, ['install', cdir, '--run-id', run], { write: true }, (j) => j.ok && j.caseRule.state === 'TEST');
+  if (cr.json?.caseRule?.id) step('case rule logs', ['getAllRuleLogs'], CASE_RULE, ['logs', '--id', cr.json.caseRule.id], {}, (j) => j.ok);
+  const rb = step('rollback', ['deleteCaseRule', 'deleteCaseTemplate', 'disableRule', 'deleteRule'], LEDGER, ['rollback', '--run', run], { write: true }, (j) => j.ok && j.remaining === 0);
+  const after = { rules: step('rule counts after', ['rules'], RULES, ['counts']).json?.counts, cases: step('case rule counts after', ['caseRules', 'caseTemplates'], CASE_RULE, ['counts']).json?.counts };
+  countsMatch('rule and case rule counts match', before, after);
+  return finish({ tenant, suite, runId: run, countsBefore: before, countsAfter: after, rollback: rb.json?.results?.map((r) => ({ kind: r.kind, name: r.name, result: r.result })) });
+}

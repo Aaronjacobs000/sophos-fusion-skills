@@ -7,6 +7,8 @@ import { listProfiles, profilesPath, readStore, removeProfile, saveProfile, setD
 import { isOpReference, resolveSecret } from '../../../lib/secrets.mjs';
 import { promptHidden } from '../../../lib/prompt.mjs';
 import { automationAbilities, counts, permissions, summarizePermissions } from '../../../lib/fusion.mjs';
+import { listParsers } from '../../../lib/parsers.mjs';
+import { listRules } from '../../../lib/detection-rules.mjs';
 import { log } from '../../../lib/log.mjs';
 
 async function readStdin() {
@@ -144,6 +146,16 @@ target tenant on the profile (list them with "profile.mjs tenants").`,
             return { abilities: automationAbilities(p), objects: summarizePermissions(p) };
           });
           const missing = Object.entries(perms.abilities).filter(([, v]) => !v).map(([k]) => k);
+          // authzPermissions has no parser object, so the parsers and detection-rules skills are checked by a read.
+          // They need Sophos NG-SIEM; a failed read here doesn't fail the self-test.
+          const canRead = async (fn) => {
+            try {
+              return { ok: true, count: (await fn(ctx.client)).length };
+            } catch (error) {
+              return { ok: false, error: error.message.slice(0, 200) };
+            }
+          };
+          const parsersAndRules = { customParsers: await canRead(listParsers), customRules: await canRead(listRules) };
           return {
             profile: ctx.profile.name,
             kind: ctx.profile.kind,
@@ -151,6 +163,7 @@ target tenant on the profile (list them with "profile.mjs tenants").`,
             target,
             steps,
             ready: missing.length === 0,
+            parsersAndRules,
             ...(missing.length ? { missing, note: 'The credential lacks some automation permissions. Check its role on the API Credentials page in Sophos Fusion.' } : {}),
           };
         } catch (error) {

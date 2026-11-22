@@ -1,0 +1,1 @@
+<134>Nov 21 10:00:00 fw-edge-02.example.net CEF:0|Acme|EdgeWall|7.2|1001|Admin login failed|5|rt=Nov 21 2026 10:00:00 src=203.0.113.9 dst=198.51.100.2 spt=60001 dpt=8443 suser=user7 duser=operator act=deny shost=host9 dhost=fw-edge-02.example.net msg=Bad credentials

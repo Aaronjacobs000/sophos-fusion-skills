@@ -1,0 +1,10 @@
+rules:
+  - name: With a test value
+    description: A rule that carries a testShould, which the API refused in the lab.
+    severity: high
+    mitre: [T1110]
+    enabled_by_default: true
+    query: "from thirdparty where sensor_type = 'OpenCanary' and alert_category = 'Login attempt'"
+    testShould:
+      - fieldName: alert_category
+        fieldValue: Login attempt

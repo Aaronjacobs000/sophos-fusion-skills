@@ -1,0 +1,13 @@
+rules:
+  - name: Any login attempt
+    description: Every OpenCanary login attempt.
+    severity: high
+    mitre: [T1110]
+    enabled_by_default: true
+    query: "from thirdparty where sensor_type = 'OpenCanary' and alert_category = 'Login attempt'"
+  - name: SSH login attempt
+    description: OpenCanary SSH login attempts, which the first rule also matches.
+    severity: high
+    mitre: [T1110]
+    enabled_by_default: true
+    query: "from thirdparty where sensor_type = 'OpenCanary' and alert_category = 'Login attempt' and destination_service_name = 'ssh'"
