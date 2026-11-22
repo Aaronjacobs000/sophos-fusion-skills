@@ -386,13 +386,17 @@ record's original_data the same way.`,
         const installed = Object.fromEntries(folder.parsers.map((p) => [p.name, owned.find((o) => o.detail.localName === p.name)?.name || P.installedName(p.name, { asIs: args['as-is'] })]));
         const localOf = Object.fromEntries(Object.entries(installed).map(([l, n]) => [n, l]));
         const schemas = [...new Set(folder.parsers.map((p) => p.schema))];
-        const text = `from ${schemas.map(qlName).join(', ')} where ${Object.values(installed).map((n) => `normalizer_revision contains ${qlString(n)}`).join(' or ')}${qlTime({ earliest: args.earliest })}`;
+        // One search per schema: a search over several schemas returns only the columns they share (lab, 22/11/2026).
+        const where = Object.values(installed).map((n) => `normalizer_revision contains ${qlString(n)}`).join(' or ');
+        const queries = schemas.map((s) => `from ${qlName(s)} where ${where}${qlTime({ earliest: args.earliest })}`);
         const needs = folder.parsers.filter((p) => p.schema !== GENERIC).map((p) => installed[p.name]);
         const started = Date.now();
         let res;
         let made;
         for (;;) {
-          res = await searchRows(ctx.client, text, { max });
+          const parts = [];
+          for (const q of queries) parts.push(await searchRows(ctx.client, q, { max }));
+          res = { rows: parts.flatMap((x) => x.rows), capped: parts.some((x) => x.capped), partial: parts.some((x) => x.partial) };
           made = {};
           for (const row of res.rows) {
             const last = P.lastParser(row.normalizer_revision);
@@ -422,7 +426,7 @@ record's original_data the same way.`,
           }
           const emuRecord = P.firstSchema(emu.schema) === schema ? emu.normalized : (emu.also || []).find((a) => a.schema === schema)?.normalized ?? null;
           compared++;
-          for (const d of P.compareRecords(emuRecord, row, schema, { emulatorNowUsec: usec || null, engineIngestUsec: usec || null })) {
+          for (const d of P.compareRecords(emuRecord, row, schema, { emulatorNowUsec: usec || null, engineIngestUsec: usec || null, schemaFieldsOnly: true })) {
             const k = `${d.path} (${d.kind})`;
             fields[k] ??= { count: 0, ...(args['show-values'] ? { example: { emulator: d.emulator, real: d.engine } } : {}) };
             fields[k].count++;
@@ -438,7 +442,7 @@ record's original_data the same way.`,
         return {
           ok: missing.length === 0 && unexplained === 0 && routeDiffer === 0,
           tenant: await ctx.tenantSummary(),
-          query: text,
+          queries,
           waitedMs: Date.now() - started,
           records: res.rows.length,
           capped: res.capped,

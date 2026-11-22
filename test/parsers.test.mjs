@@ -318,12 +318,16 @@ describe('verify-ingest', () => {
     { match: { op: 'searchResults' }, responses: values.map((v) => gql({ searchResults: { values: v, totals: { total: { value: v.length } }, nextCursor: null } })) },
   ];
 
+  const bySchema = (all) => [all.filter((r) => r.schema_type === 'generic'), all.filter((r) => r.schema_type === 'thirdparty')];
+
   test('polls until every schema-writing parser has records, filters on normalizer_revision, and prints no values', () => {
-    const r = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '30m', '--interval', '1', '--quiet'], { rules: scenario([[], rows()]) });
+    // Each round searches generic, then thirdparty. The first round finds nothing.
+    const r = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '30m', '--interval', '1', '--quiet'], { rules: scenario([[], [], ...bySchema(rows())]) });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.equal(r.json.ok, true);
-    assert.equal(r.calls.filter((c) => c.op === 'createSearch').length, 2);
-    assert.match(r.json.query, /normalizer_revision contains 'ZZTest_OPENCANARY_JSON_PARENT' or normalizer_revision contains 'ZZTest_OPENCANARY_JSON_CHILD_THIRDPARTYALERT'/);
+    assert.equal(r.calls.filter((c) => c.op === 'createSearch').length, 4);
+    assert.deepEqual(r.json.queries.map((q) => q.split(' where ')[0]), ['from generic', 'from thirdparty'], 'one search per schema');
+    assert.match(r.json.queries[1], /normalizer_revision contains 'ZZTest_OPENCANARY_JSON_PARENT' or normalizer_revision contains 'ZZTest_OPENCANARY_JSON_CHILD_THIRDPARTYALERT'/);
     assert.equal(r.json.byParser[`ZZTest_${CHILD.name}`], 46);
     assert.deepEqual(r.json.differences, {});
     assert.ok(!r.stdout.includes('198.51.100.23'));
@@ -331,12 +335,18 @@ describe('verify-ingest', () => {
 
   test('a field that differs is counted, with values only under --show-values', () => {
     const tweak = (x) => (P.firstSchema(x.schema) === 'scwx.thirdpartyalert' ? { title: 'Real title' } : {});
-    const plain = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '0', '--quiet'], { rules: scenario([rows({ tweak })]) });
+    const plain = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '0', '--quiet'], { rules: scenario(bySchema(rows({ tweak }))) });
     assert.equal(plain.json.ok, false);
     assert.equal(plain.json.differences['title (differ)'].count, 46);
     assert.equal(plain.json.differences['title (differ)'].example, undefined);
-    const shown = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '0', '--show-values', '--quiet'], { rules: scenario([rows({ tweak })]) });
+    const shown = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '0', '--show-values', '--quiet'], { rules: scenario(bySchema(rows({ tweak }))) });
     assert.equal(shown.json.differences['title (differ)'].example.real, 'Real title');
+  });
+
+  test('what Sophos Fusion adds to a record after parsing is not a difference', () => {
+    const tweak = () => ({ alerts_data: { aggregated: { total: 2 } }, origin: 'x', enrichSummary: 'y' });
+    const r = runScript(SCRIPT, ['verify-ingest', EXAMPLE, '--wait', '0', '--quiet'], { rules: scenario(bySchema(rows({ tweak }))) });
+    assert.equal(r.json.ok, true, JSON.stringify(r.json.differences));
   });
 });
 
