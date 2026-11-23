@@ -11,13 +11,13 @@ where sensor_type = 'OpenCanary'
   and severity != 'HIGH'
 ```
 
-- `FROM` one schema, by its QL name: `auth`, `antivirus`, `apicall`, `cloudaudit`, `dhcp`, `dnsquery`, `email`, `encrypt`, `filemod`, `generic`, `http`, `managementevent`, `netflow`, `nids`, `process`, `registry`, `thirdparty`. `FROM thirdpartyalert` reads as `thirdparty`.
+- `FROM` one schema, by its QL name: `auth`, `antivirus`, `apicall`, `cloudaudit`, `dhcp`, `dnsquery`, `email`, `encrypt`, `filemod`, `generic`, `http`, `managementevent`, `netflow`, `nids`, `process`, `registry`, `thirdparty`. Write `FROM thirdparty`, never `FROM thirdpartyalert`: rules take it, but Data Lake Search refuses it (23/11/2026), so `check` refuses it too.
 - `WHERE` conditions, joined with `AND`, `OR`, `NOT` and parentheses.
 - No pipeline (`| aggregate ...`), no `EARLIEST` or `LATEST`: a rule matches one event at a time, as it arrives.
 
 ## Operators
 
-`=`, `!=`, `<`, `<=`, `>`, `>=`, `IN (...)`, `!IN (...)`, `CONTAINS`, `!CONTAINS`, `MATCHES` (a glob with `*` and `?`), `!MATCHES`, `MATCHES_REGEX`, `IS NULL`, `IS NOT NULL`. Operators and values are case-insensitive.
+`=`, `!=`, `<`, `<=`, `>`, `>=`, `IN (...)`, `!IN (...)`, `CONTAINS`, `!CONTAINS`, `MATCHES` (a glob with `*` and `?`), `!MATCHES`, `MATCHES_REGEX`, `!MATCHES_REGEX`, `IS NULL`, `IS NOT NULL`. Operators and values are case-insensitive.
 
 - `'...'` strings are taken as written. `e'...'` strings read backslash escapes, the only way to put a quote in one.
 - `NOT IN` is a syntax error. Write `!IN`.
@@ -33,7 +33,7 @@ where sensor_type = 'OpenCanary'
 
 ## Regex
 
-`MATCHES_REGEX` refuses backreferences, lookarounds, atomic groups and possessive quantifiers. `validateQLFilter` passes backreferences and lookarounds (20/11/2026), so the offline check is the one that catches them. Rules and Data Lake Search use different regex engines, so run a regex rule live as well as in a search.
+`MATCHES_REGEX` and `!MATCHES_REGEX` refuse backreferences, lookarounds, atomic groups and possessive quantifiers. `validateQLFilter` passes backreferences and lookarounds (20/11/2026), so the offline check is the one that catches them. Rules and Data Lake Search use different regex engines, so run a regex rule live as well as in a search.
 
 ## What a rule set needs
 

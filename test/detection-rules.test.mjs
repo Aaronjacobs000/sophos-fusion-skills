@@ -43,6 +43,16 @@ describe('the offline check', () => {
   test('a query that does not pin the sensor type is refused', () => assert.ok(codes(validateRuleEntry(variant('no-pin.yaml'), { parser })).includes('sensor')));
   test('an enum compared with a number is refused', () => assert.ok(codes(validateRuleEntry(variant('enum-number.yaml'), { parser })).includes('enum')));
   test('a backreference is refused', () => assert.ok(codes(validateRuleEntry(variant('backreference.yaml'), { parser })).includes('regex')));
+  test('!MATCHES_REGEX reads, its pattern is held to the regex limits, and it gets the regex review note', () => {
+    const r = validateRuleEntry(variant('not-matches-regex.yaml'), { parser });
+    assert.ok(!codes(r).includes('ql'), JSON.stringify(r.problems));
+    assert.ok(r.problems.some((p) => p.code === 'regex' && /!MATCHES_REGEX 'a\(\?=b\)' uses a lookahead/.test(p.message)));
+    assert.ok(r.problems.some((p) => p.code === 'review' && /uses MATCHES_REGEX\. Rules and Data Lake Search use different regex engines/.test(p.message)));
+  });
+  test('FROM thirdpartyalert is refused, because Data Lake Search refuses it', () => {
+    const r = validateRuleEntry(variant('from-thirdpartyalert.yaml'), { parser });
+    assert.ok(r.problems.some((p) => p.level === 'error' && p.code === 'ql' && /write FROM thirdparty/.test(p.message)));
+  });
   test('testShould is refused, with the lab reason', () => {
     const r = validateRuleEntry(variant('test-should.yaml'), { parser });
     assert.ok(r.problems.some((p) => p.level === 'error' && /hyperscan container/.test(p.message)));

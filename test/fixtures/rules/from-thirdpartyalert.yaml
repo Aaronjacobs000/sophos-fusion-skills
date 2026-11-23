@@ -1,0 +1,7 @@
+rules:
+  - name: Thirdpartyalert
+    description: A test rule.
+    severity: high
+    mitre: [T1110]
+    enabled_by_default: true
+    query: "from thirdpartyalert where sensor_type = 'OpenCanary' and alert_category = 'Login attempt'"
