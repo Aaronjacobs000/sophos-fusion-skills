@@ -90,10 +90,18 @@ export function testedState(meta) {
   return { key: 'offline', label: 'offline checks only', tone: 'amber' };
 }
 
+// A parser entry's name on the page: its vendor and product, or the product alone when it already
+// starts with the vendor's name, such as 1Password Business.
+export function parserLabel(meta) {
+  const v = (meta && meta.vendor) || '';
+  const p = (meta && meta.product) || '';
+  return v && p && !p.toLowerCase().startsWith(v.toLowerCase()) ? `${v} ${p}` : p || v;
+}
+
 // The text the Rules search matches: kind, title, vendor, product, author, parser, schema, sensor
-// types, and each rule's name, severity and MITRE IDs.
-export function ruleSearchText(meta, rules = []) {
+// types, each rule's name, severity and MITRE IDs, and the aliases of the parser entry it needs.
+export function ruleSearchText(meta, rules = [], aliases = []) {
   const m = meta && typeof meta === 'object' ? meta : {};
   return JSON.stringify([m.kind, m.title, m.vendor, m.product, m.author, m.parser, m.schema, m.sensor_types,
-    (Array.isArray(rules) ? rules : []).map((r) => [r && r.name, r && r.severity, r && r.mitre])]).toLowerCase();
+    (Array.isArray(rules) ? rules : []).map((r) => [r && r.name, r && r.severity, r && r.mitre]), Array.isArray(aliases) ? aliases : []]).toLowerCase();
 }

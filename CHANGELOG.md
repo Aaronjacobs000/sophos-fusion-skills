@@ -2,6 +2,10 @@
 
 All notable changes to this project are listed here. Versions follow semantic versioning.
 
+## Unreleased
+
+- The vendored library is re-synced to commit 699e217 for its scan and rule query fixes: the rule checks read `!MATCHES_REGEX` and hold its pattern to the rule engine's regex limits, they refuse `FROM thirdpartyalert` because Data Lake Search refuses it, and the personal data scan checks an IPv4 address right after a colon, such as `IP:10.20.0.5`.
+
 ## 0.2.0 (2026-11-22)
 
 Two new skills, for Sophos NG-SIEM custom parsers and the detection rules that use them.

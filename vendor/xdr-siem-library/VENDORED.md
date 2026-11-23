@@ -1,8 +1,8 @@
 # Vendored: Unofficial Sophos Fusion XDR and SIEM Library
 
 - Upstream: https://github.com/Aaronjacobs000/sophos-xdr-siem-library
-- Commit: 343762cf61a3797e320df2babba8069a0b60a327
-- Synced: 2026-11-22
+- Commit: 699e2178417965521c99bb3c0f22e83c32200e12
+- Synced: 2026-11-23
 - License: MIT, see `LICENSE` in this folder. `ATTRIBUTIONS.md` credits gitleaks (MIT) for `studio/core/gitleaks-rule.js` and `studio/core/gitleaks.js`, and says where `studio/core/schema-data.js` comes from.
 - Files: every file in `studio/core`, and `studio/app/plan.js`, copied without changes. The scripts import them through `lib/xsl.mjs` only.
 - Why vendored: the parsers and detection-rules skills run the library's emulator, schema data, rule query reader and parser generator offline, with no `npm install` and no download at run time.
@@ -23,14 +23,14 @@ To update, run `node tools/sync-library.mjs <library clone> --sha <commit on mai
 | `studio/core/gotime.js` | `98a414c282433f2e95068d9945766af5d9cae0c752db4bd2b0476eaac1704f4d` |
 | `studio/core/jsonpath.js` | `c271578590f9ed7f784ca9e33df56ecae79e9c030e09c59be20448c98f0706e6` |
 | `studio/core/language.js` | `111b189a9284fd62f8dbbe7e521c41e5803622080b563f6d16360e71e4030a70` |
-| `studio/core/library.js` | `11c41f6cb09b9a0b91fa38ce02e57e8008c1a793a85c2720218cf0b395030376` |
+| `studio/core/library.js` | `f9913e561dc5d1410c9bdbd30d7975884b7168df6794a9a0a6890724063a4ffb` |
 | `studio/core/lint.js` | `598317523175b6eb7b1eb93fad7fd0bf77687a9f80fef46afebab1245c981e91` |
 | `studio/core/mapping.js` | `2ae3b213b77a55bffc0606fbb0537b9cb7d966811a0a7026198eb74e9b2c7784` |
 | `studio/core/normalize.js` | `356e59c2008265cd0e8a5cf249acacea3ac9fd0020c95b9a0389107b46d2eed6` |
 | `studio/core/notes.js` | `b57b9c389dee754ae5a718f63c7be70eecb18741c147e8705f148bd22840aac9` |
-| `studio/core/ql.js` | `735b38ef2a8dbd0aadcd3a558664e5f24730fd9043be9de4b5a58e0f24b87e53` |
-| `studio/core/rules.js` | `b30ee1a50a20de71bc3a304b6bbd958039859ba3352ead6377cf4e68933cf598` |
-| `studio/core/scan.js` | `4546368eb40b33217e52ae8c4819b9e96c71e27f3fceaac931db7c1b51661a79` |
+| `studio/core/ql.js` | `0e6b9db34fd3cb606450a9bef4fb28f798322fd45fba626391d1ca4bbb3cc044` |
+| `studio/core/rules.js` | `f17b757a30258d22861a483180c877c637c446f281d091e19a1b7a678b42f09e` |
+| `studio/core/scan.js` | `f3155bf692280767697b350622a93f12b87f5005933ed0ee1e2ef02887ab973c` |
 | `studio/core/schema-data.js` | `93df033601c6b5dbbb6c5336a8d4aaddeb7ea579d52e00d7819d38f4b0c52b36` |
 | `studio/core/schemas.js` | `4f3c958222e4311602e271942d2b50f6ae57463691500cff0e56a628ec7e9990` |
 | `studio/core/values.js` | `f5058b79b48ec07019b5fa4019acfc717c718e01643c8517c56354e0014f8f7e` |
